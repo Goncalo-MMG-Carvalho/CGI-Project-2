@@ -1,6 +1,7 @@
 import { buildProgramFromSources, loadShadersFromURLS, setupWebGL } from "../../libs/utils.js";
 import { ortho, lookAt, flatten, rotate, rotateX, rotateZ, mult } from "../../libs/MV.js";
-import { modelView, loadMatrix, multRotationY, multScale, pushMatrix, popMatrix, multTranslation, multRotationZ } from "../../libs/stack.js";
+import { modelView, loadMatrix, multRotationY, multRotationX, multScale, pushMatrix, popMatrix, multTranslation, multRotationZ } from "../../libs/stack.js";
+
 
 //import * as SPHERE from '../../libs/objects/sphere.js';
 import * as CUBE from '../../libs/objects/cube.js';
@@ -24,7 +25,12 @@ const VIEWS = {
     "original": lookAt([VP_DISTANCE / 4, VP_DISTANCE / 3, VP_DISTANCE], [0, 0, 0], [0, 1, 0]),
 }
 
-let activeView = VIEWS["1"];
+let activeView = VIEWS["original"];
+
+// Colors
+const COLOR_BEAM = [255, 255, 0, 1.0];
+
+
 
 // Crane Controls
 
@@ -56,6 +62,7 @@ function setup(shaders) {
     let mProjection = ortho(-VP_DISTANCE * aspect, VP_DISTANCE * aspect, -VP_DISTANCE, VP_DISTANCE, -3 * VP_DISTANCE, 3 * VP_DISTANCE);
 
     mode = gl.LINES;
+    //mode = gl.TRIANGLES;
 
     resize_canvas();
     window.addEventListener("resize", resize_canvas);
@@ -126,29 +133,14 @@ function setup(shaders) {
         mProjection = ortho(-VP_DISTANCE * aspect, VP_DISTANCE * aspect, -VP_DISTANCE, VP_DISTANCE, -3 * VP_DISTANCE, 3 * VP_DISTANCE);
     }
 
-    function uploadModelView() {
+    function uploadModelView(color) {
         gl.uniformMatrix4fv(gl.getUniformLocation(program, "mModelView"), false, flatten(modelView()));
+
+        // Send color to fragment shader
+        gl.uniform4fv(gl.getUniformLocation(program, "uColor"), color);
     }
 
-    // function beam() { // Beam
-
-    //     multScale([1 / L1, 1, 1 / L1]); //Same as [1,5,1] but smaller
-    //     multTranslation([1 / (L1 * 2), 0.5, 1 / (L1 * 2)]);
-    //     uploadModelView();
-
-    //     CUBE.draw(gl, program, mode);
-    // }
-
-    /**
-     * Makes the base of the crane
-     */
-    function block() { // Base block
-        multScale([1 / L1, 1 / L1, 1 / L1]);
-        multTranslation([1 / (L1 * 2), 0.5, 1 / (L1 * 2)]);
-        uploadModelView();
-
-        CUBE.draw(gl, program, mode);
-    }
+    
 
     /**
      * Makes the cilinder that couples the top bar to the crane
@@ -157,33 +149,41 @@ function setup(shaders) {
         CYLINDER.draw(gl, program, mode);
     }
 
-    /**
-     * Makes the cross axis top bar
-     */
-    function prism() { // Base triangular prism
-
-    }
 
     /**
      * This is the top bar of the crane in the cross axis
      * -> This part is static
      */
     function top_bar() {
-
+        top_bar_forward();
+        top_bar_backward();
     }
 
     /**
-     * 
+     * Draws the section of the top bar that goes forward
      */
     function top_bar_forward() {
-
+        pushMatrix();  
+            for (let i = 0; i < 3; i++) { //TODO change value in loop condition to T3
+                prismBase();
+                sidesOfPrism();
+                multTranslation([0,0,1]);
+            }
+            prismBase();
+        popMatrix();
     }
 
     /**
-     * 
+     * Draws the section of the top bar that goes backwards
      */
     function top_bar_backward() {
-
+        pushMatrix();  
+            for (let i = 0; i < 3; i++) { //TODO change value in loop condition to T4
+                multTranslation([0,0,-1]);
+                sidesOfPrism();
+                prismBase(); 
+            }
+        popMatrix();
     }
 
     /**
@@ -209,26 +209,66 @@ function setup(shaders) {
     /**
      * Create the floor with 2 tones of gray
      */
-    function floor() {
-
-    }
-
-    function base() { // Base
+    function floor() {  //TODO finish this function
         pushMatrix();
-        block();
-        popMatrix();
-
-        pushMatrix();
-        multTranslation([0, 1 / 5, 0]);
-        block();
-        popMatrix();
-
-        pushMatrix();
-        multTranslation([0, 1 / 5, 0]);
-        multTranslation([-1 / 5, 0, 0]);
-        block();
+            multScale([CITY_SIZE, 1, CITY_SIZE]);
+            
         popMatrix();
     }
+
+    /**
+     * Draws the beam from witch the prism are made of
+     */
+    function PrismBeam() // Beam
+    {
+        multScale([1/L1, 1, 1/L1]); //Same as [1,5,1] but smaller
+        multTranslation([1/(L1*2), 0.5, 1/(L1*2)]);
+
+        uploadModelView(COLOR_BEAM);
+        CUBE.draw(gl, program, mode);
+    }
+
+    /**
+     * Draws the Base of the prism
+     */
+    function prismBase() // Base of the prism
+    {
+        
+        pushMatrix();
+            PrismBeam();
+        popMatrix();
+        pushMatrix();
+            multRotationZ(60);
+            PrismBeam();
+        popMatrix();
+        pushMatrix();
+            multTranslation([0,1,0]);
+            multRotationZ(120);
+            PrismBeam();
+        popMatrix();
+    }
+
+    /**
+     * Draws the side Beams of the prism
+     */
+    function sidesOfPrism() {
+        pushMatrix();
+            multRotationX(90);
+            PrismBeam();
+        popMatrix();
+        pushMatrix();
+            multTranslation([0,1,0]);
+            multRotationX(90);
+            PrismBeam();
+        popMatrix();
+        pushMatrix();
+            multRotationX(90);
+            // sqrt(3)/2 = sin(60) , 1/2 = cos(60), Because the angle of an equilateral triangle is 60º
+            multTranslation([-Math.sqrt(3)/2, 0, -1/2]);
+            PrismBeam();
+        popMatrix();
+    }
+
 
     function render() {
         if (animation) time += speed;
@@ -240,14 +280,10 @@ function setup(shaders) {
 
         gl.uniformMatrix4fv(gl.getUniformLocation(program, "mProjection"), false, flatten(mProjection));
 
-        // loadMatrix(lookAt([VP_DISTANCE / 4, VP_DISTANCE / 3, VP_DISTANCE], [0, 0, 0], [0, 1, 0]));
         loadMatrix(activeView); // Load corresponding perspective matrix
-        /*
-        pushMatrix();
-            beam();
-        popMatrix();
-        */
-        base();
+
+        top_bar_forward();
+        top_bar_backward();
     }
 }
 
