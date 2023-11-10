@@ -10,7 +10,7 @@ import * as CYLINDER from '../../libs/objects/cylinder.js';
 /** @type WebGLRenderingContext */
 let gl;
 
-const VP_DISTANCE = 100; // TODO por o vp_distance a 10
+const VP_DISTANCE = 2; // TODO por o vp_distance a 10
 
 let time = 0;           // Global simulation time in days
 let speed = 1 / 60.0;     // Speed (how many days added to time on each render pass
@@ -37,22 +37,22 @@ const COLOR_FLOOR_2 = [128, 128, 128, 1.0]; // Grey
 // Crane Parameters
 
 let T1 = 20; // Number of cubes in the first section of the tower
-let T2 = 25; // Number of cubes in the second section of the tower
+let T2 = T1 + 5; // Number of cubes in the second section of the tower
 
-let T3 = 30; // Number of prisms in the biggest section of the top bar
+let T3 = T1; // Number of prisms in the biggest section of the top bar
 let T4 = T3 / 3; // Number of prisms in the smallest section of the top bar
 
-let E1 = 0.5; // Thickness of the edges of the tower
+let E1 = 0.1; // Thickness of the edges of the tower
 let E2 = E1; // Thickness of the edges of the second section of the tower
 let E3 = E2; // Thickness of the edges of the top bar
 
-let L1 = 5;  // Length of the beam of the first section of the tower
+let L1 = 10 * E1;  // Length of the beam of the first section of the tower
 let L2 = L1 - 2 * E1; // Length of the beam of the second section of the tower
 let L3 = L2; // Length of the beam of the top bar
 
 // Floor
 const FLOOR_BLOCK_SIZE = 2 * L1; // Length of the floor
-const FLOOR_SIZE = FLOOR_BLOCK_SIZE * 5; // Size of the floor
+const FLOOR_SIZE = FLOOR_BLOCK_SIZE * 11; // Size of the floor
 
 
 
@@ -212,26 +212,56 @@ function setup(shaders) {
      */
     function first_section() {
         for (let i = 0; i < T1; i++) { // Create each block of the first section
-
+            pushMatrix();
+                cubeBase(true);
+            popMatrix();
+            pushMatrix();
+                sidesOfCube(true);
+            popMatrix();
+            multTranslation([0,L1,0]);
         }
+        cubeBase(true);
     }
 
     /**
      * The second section of the crane
      * -> This is the part of the crane that goes up and down
      */
-    function second_section() {
+    function second_section() { //TODO change the translation to support movement
+        multTranslation([-E1, L1*T1, -E1]);
         for (let i = 0; i < T2; i++) { // Create each block of the second section
-
+            pushMatrix();
+                cubeBase(false);
+            popMatrix();
+            pushMatrix();
+                sidesOfCube(false);
+            popMatrix();
+            multTranslation([0,L1,0]);
         }
+        cubeBase(false);
+    }
+
+    /**
+     * Draws the tower of the crane
+     */
+    function tower() {
+        pushMatrix();
+            first_section();
+        popMatrix();
+        pushMatrix();
+            second_section();
+        popMatrix();
     }
 
     /**
      * Create the floor with 2 tones, grey and white
      */
     function floor() {  //TODO I dont know why but the floor looks completly white on my screen, might be a screen problem
+        multTranslation([0, -FLOOR_BLOCK_SIZE/100, 0]); //To compensate for the height of the blocks that make the floor
         multScale([FLOOR_BLOCK_SIZE, FLOOR_BLOCK_SIZE/100, FLOOR_BLOCK_SIZE]); // Scale of the blocks that make the floor
-        multTranslation([-FLOOR_SIZE/2, 0.2, -FLOOR_SIZE/2]); // so the floor is centered on the origin
+        
+        // so the floor is centered on the origin
+        multTranslation([(-FLOOR_SIZE + (L1/2 + E1/2))/2, 0, (-FLOOR_SIZE + (L1/2 - E1/2))/2]);
 
         for (let i = 0; i < FLOOR_SIZE; i++) { // Create each block of the floor
             pushMatrix();
@@ -298,6 +328,67 @@ function setup(shaders) {
         popMatrix();
     }
 
+    function cubeBeam(isFirstSection) {
+        let l = 0;
+        let e = 0;
+        if (isFirstSection) {l = L1; e = E1;} 
+        else {l = L2; e = E2;}
+
+        multTranslation([e/2, l/2, e/2]); // To centre the axis xyz
+        multScale([e, l, e]);
+        uploadModelView(COLOR_BEAM);
+        CUBE.draw(gl, program, mode);
+    }
+
+    function cubeBase(isFirstSection) {
+        let l = 0;
+        let e = 0;
+        if (isFirstSection) {l = L1; e = E1;} 
+        else {l = L2; e = E2;}
+
+        multRotationX(-90);
+        pushMatrix();
+            cubeBeam(isFirstSection);
+        popMatrix();
+        pushMatrix();
+            multRotationZ(90);
+            cubeBeam(isFirstSection);
+        popMatrix();
+        pushMatrix();
+            multTranslation([e, l, 0]);
+            multRotationZ(90);
+            cubeBeam(isFirstSection);
+        popMatrix();
+        pushMatrix();
+            multTranslation([-l, e, 0]);
+            cubeBeam(isFirstSection);
+        popMatrix();
+    }
+
+    function sidesOfCube(isFirstSection) {
+        let l = 0;
+        let e = 0;
+        if (isFirstSection) {l = L1; e = E1;} 
+        else {l = L2; e = E2;}
+
+        multTranslation([0, e, -e]);
+        pushMatrix();
+            cubeBeam(isFirstSection);
+        popMatrix();
+        pushMatrix();
+            multTranslation([-l, 0, 0]);
+            cubeBeam(isFirstSection);
+        popMatrix();
+        pushMatrix();
+            multTranslation([0, 0, -l]);
+            cubeBeam(isFirstSection);
+        popMatrix();
+        multTranslation([-l, 0, -l]);
+        cubeBeam(isFirstSection);
+
+
+    }
+
 
     function render() {
         if (animation) time += speed;
@@ -315,9 +406,9 @@ function setup(shaders) {
             floor();
         popMatrix();
         pushMatrix();
-            top_bar();
+        //    top_bar();
         popMatrix();
-        
+        tower();
     }
 }
 
