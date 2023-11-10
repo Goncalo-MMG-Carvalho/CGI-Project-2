@@ -1,5 +1,5 @@
 import { buildProgramFromSources, loadShadersFromURLS, setupWebGL } from "../../libs/utils.js";
-import { ortho, lookAt, flatten, rotate, rotateX, rotateZ, mult } from "../../libs/MV.js";
+import { ortho, lookAt, flatten, rotate, rotateX, rotateZ, mult, rotateY } from "../../libs/MV.js";
 import { modelView, loadMatrix, multRotationY, multRotationX, multScale, pushMatrix, popMatrix, multTranslation, multRotationZ } from "../../libs/stack.js";
 
 
@@ -10,32 +10,31 @@ import * as CYLINDER from '../../libs/objects/cylinder.js';
 /** @type WebGLRenderingContext */
 let gl;
 
-const VP_DISTANCE = 20; // TODO por o vp_distance a 10
+const VP_DISTANCE = 10; // TODO por o vp_distance a 10
 
 let time = 0;           // Global simulation time in days
 let speed = 1 / 60.0;     // Speed (how many days added to time on each render pass
 let mode;               // Drawing mode (gl.LINES or gl.TRIANGLES)
 let animation = true;   // Animation is running
 
-let THETA = 1;
-let GAMMA = 1;
+let THETA = 0;
+let GAMMA = 0;
 
 const VIEWS = {
     "1": lookAt([0, VP_DISTANCE * 0.9, VP_DISTANCE / 4], [0, VP_DISTANCE * 0.9, 0], [0, 1, 0]), //Front view
     "2": lookAt([0, VP_DISTANCE / 4, 0], [0, 0, 0], [0, 0, -1]), //From Above
     "3": lookAt([-VP_DISTANCE / 4, 0, 0], [0, 0, 0], [0, 1, 0]), //From left
-    "4": lookAt([VP_DISTANCE * GAMMA / 4, VP_DISTANCE * THETA / 3, VP_DISTANCE], [0, 0, 0], [0, 1, 0]), //View proposed by the teacher, axiometric view
-}
-
-
+    //"4": lookAt([VP_DISTANCE * GAMMA / 4, VP_DISTANCE * THETA / 3, VP_DISTANCE], [0, 0, 0], [0, 1, 0]), //View proposed by the teacher, axiometric view
+    "4": lookAt([VP_DISTANCE/ 4, VP_DISTANCE/ 3, VP_DISTANCE], [0, 0, 0], [0, 1, 0]),
+};
 
 let activeView = VIEWS["4"];
 
 // Colors
 const COLOR_BEAM = [1, 1, 0, 1.0]; // yellow
 const COLOR_FLOOR_1 = [1, 1, 1, 1.0]; // White
-const COLOR_FLOOR_2 = [0.3, 0.3, 0.3, 1]; // Grey
-const COLOR_ROTATOR = [1, 0, 0, 1]; // Dark Grey
+const COLOR_FLOOR_2 = [0.7, 0.7, 0.7, 1]; // Grey
+const COLOR_ROTATOR = [0.1, 0.1, 0.1, 1]; // Dark Grey
 
 
 // Crane Parameters
@@ -61,16 +60,17 @@ const FLOOR_SIZE = FLOOR_BLOCK_SIZE * 10 + 1; // Size of the floor, +1 to be imp
 // Crane Dimensions
 const LOWER_SECTION_HEIGHT = L1 * T1; // Height of the lower section of the crane
 
-const MAX_SECOND_SECTION_HEIGHT = L2 * T2; // Height of the second section of the crane
-const MIN_SECOND_SECTION_HEIGHT = 0; // Minimum height of the second section of the crane
+const MAX_SECOND_SECTION_HEIGHT = LOWER_SECTION_HEIGHT * 0.9; // Height of the base of second section of the crane to the floor
+const MIN_SECOND_SECTION_HEIGHT = MAX_SECOND_SECTION_HEIGHT * 0.05; // Minimum height of the base second section of the crane
 
-let CURRENT_SECOND_SECTION_HEIGHT = MAX_SECOND_SECTION_HEIGHT / 2; // Current height of the second section of the crane
+let CURRENT_SECOND_SECTION_HEIGHT = MAX_SECOND_SECTION_HEIGHT / 2; // Current height of the second section of the crane to the floor
 let CRANE_ROTATION_ANGLE = 0; // Current rotation angle of the crane
 
 const ROTATOR_HEIGHT = L2 / 2; // Height of the cylinder that couples the top bar to the crane
 const ROTATOR_RADIUS = FLOOR_BLOCK_SIZE / 2;
 
-const CRANE_HEIGHT = CURRENT_SECOND_SECTION_HEIGHT + ROTATOR_HEIGHT; // Height of the crane
+let topOfTowerHeight = CURRENT_SECOND_SECTION_HEIGHT + L2 * T2 + E2; // Height of the crane
+
 
 
 function setup(shaders) {
@@ -127,13 +127,15 @@ function setup(shaders) {
                 break;
 
             case 'i': // Expand Base
-                if (CURRENT_SECOND_SECTION_HEIGHT < MAX_SECOND_SECTION_HEIGHT * 0.8)
+                if (CURRENT_SECOND_SECTION_HEIGHT < MAX_SECOND_SECTION_HEIGHT)
                     CURRENT_SECOND_SECTION_HEIGHT += 0.1;
+                topOfTowerHeight = CURRENT_SECOND_SECTION_HEIGHT + L2 * T2 + E2
                 break;
 
             case 'k': // Contract Base
-                if (CURRENT_SECOND_SECTION_HEIGHT > MIN_SECOND_SECTION_HEIGHT + MAX_SECOND_SECTION_HEIGHT * 0.05 )
+                if (CURRENT_SECOND_SECTION_HEIGHT > MIN_SECOND_SECTION_HEIGHT)
                     CURRENT_SECOND_SECTION_HEIGHT -= 0.1;
+                topOfTowerHeight = CURRENT_SECOND_SECTION_HEIGHT + L2 * T2 + E2
                 break;
 
             case 'j': // Rotate CCW
@@ -152,6 +154,7 @@ function setup(shaders) {
 
             case 'ArrowLeft': // Increase THETA
                 THETA += 1;
+                console.log(THETA);
                 break;
 
             case 'ArrowRight': // Decrease THETA
@@ -285,7 +288,7 @@ function setup(shaders) {
         /**/first_section();
         popMatrix();
         pushMatrix();
-        /**/multTranslation([-E1, CURRENT_SECOND_SECTION_HEIGHT, -E1]); //TODO change the translation to support movement
+        /**/multTranslation([-E1, CURRENT_SECOND_SECTION_HEIGHT, -E1]);
         /**/second_section();
         popMatrix();
     }
@@ -442,6 +445,13 @@ function setup(shaders) {
 
         loadMatrix(activeView); // Load corresponding perspective matrix
 
+        /** test view change */
+        if (activeView == VIEWS["4"]) {
+            //multRotationZ(GAMMA); // com o z nao funciona bem
+            multRotationY(THETA);
+        }           
+        /** end of test */
+
 
         multTranslation([L1, 0, L1]); // Recentar o desenho todo no centro do ecrã
         pushMatrix();
@@ -453,11 +463,14 @@ function setup(shaders) {
         /**/tower();
         popMatrix();
         pushMatrix();  
-        /**/multTranslation([0, LOWER_SECTION_HEIGHT + CURRENT_SECOND_SECTION_HEIGHT + ROTATOR_HEIGHT, 0]);
+        /**///multTranslation([0, LOWER_SECTION_HEIGHT + CURRENT_SECOND_SECTION_HEIGHT + ROTATOR_HEIGHT, 0]);
+        /**/multTranslation([0, topOfTowerHeight + ROTATOR_HEIGHT/2, 0]);
         /**/multTranslation([-FLOOR_BLOCK_SIZE/2, 0, -FLOOR_BLOCK_SIZE/2]);
         /**/multRotationY(CRANE_ROTATION_ANGLE);
-        /**/rotator();
-        /**/multTranslation([0, ROTATOR_HEIGHT, -(L3+E3)/2]);  
+        /**/pushMatrix();
+        /**//**/rotator();
+        /**/popMatrix();
+        /**/multTranslation([0, ROTATOR_HEIGHT/2, -(L3+E3)/2]);  
         /**/top_bar();
             
         popMatrix();
