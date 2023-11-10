@@ -10,7 +10,7 @@ import * as CYLINDER from '../../libs/objects/cylinder.js';
 /** @type WebGLRenderingContext */
 let gl;
 
-const VP_DISTANCE = 2; // TODO por o vp_distance a 10
+const VP_DISTANCE = 10; // TODO por o vp_distance a 10
 
 let time = 0;           // Global simulation time in days
 let speed = 1 / 60.0;     // Speed (how many days added to time on each render pass
@@ -36,7 +36,7 @@ const COLOR_FLOOR_2 = [128, 128, 128, 1.0]; // Grey
 
 // Crane Parameters
 
-let T1 = 20; // Number of cubes in the first section of the tower
+let T1 = 10; // Number of cubes in the first section of the tower
 let T2 = T1 + 5; // Number of cubes in the second section of the tower
 
 let T3 = T1; // Number of prisms in the biggest section of the top bar
@@ -52,8 +52,7 @@ let L3 = L2; // Length of the beam of the top bar
 
 // Floor
 const FLOOR_BLOCK_SIZE = 2 * L1; // Length of the floor
-const FLOOR_SIZE = FLOOR_BLOCK_SIZE * 11; // Size of the floor
-
+const FLOOR_SIZE = FLOOR_BLOCK_SIZE * 10 + 1; // Size of the floor, +1 to be impar
 
 
 function setup(shaders) {
@@ -140,7 +139,6 @@ function setup(shaders) {
 
     window.requestAnimationFrame(render);
 
-
     function resize_canvas(event) {
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
@@ -158,7 +156,6 @@ function setup(shaders) {
         gl.uniform4fv(gl.getUniformLocation(program, "uColor"), color); // Upload color
     }
 
-    
 
     /**
      * Makes the cilinder that couples the top bar to the crane
@@ -257,11 +254,12 @@ function setup(shaders) {
      * Create the floor with 2 tones, grey and white
      */
     function floor() {  //TODO I dont know why but the floor looks completly white on my screen, might be a screen problem
-        multTranslation([0, -FLOOR_BLOCK_SIZE/100, 0]); //To compensate for the height of the blocks that make the floor
+        multTranslation([0, -FLOOR_BLOCK_SIZE/200, 0]); //To compensate for the height of the blocks that make the floor
         multScale([FLOOR_BLOCK_SIZE, FLOOR_BLOCK_SIZE/100, FLOOR_BLOCK_SIZE]); // Scale of the blocks that make the floor
         
-        // so the floor is centered on the origin
-        multTranslation([(-FLOOR_SIZE + (L1/2 + E1/2))/2, 0, (-FLOOR_SIZE + (L1/2 - E1/2))/2]);
+        // so the floor is centered on the middle of the screen
+        multTranslation([-FLOOR_SIZE/2, 0, -FLOOR_SIZE/2]);
+
 
         for (let i = 0; i < FLOOR_SIZE; i++) { // Create each block of the floor
             pushMatrix();
@@ -402,13 +400,20 @@ function setup(shaders) {
 
         loadMatrix(activeView); // Load corresponding perspective matrix
         
+        /*
+        multTranslation([L1, FLOOR_BLOCK_SIZE/200, L1]); // Recentar o desenho todo no centro do ecrã
         pushMatrix();           
             floor();
         popMatrix();
         pushMatrix();
         //    top_bar();
         popMatrix();
-        tower();
+        pushMatrix();
+            multTranslation([-(L1+E1)/2, 0, -(L1-E1)/2 ]);
+            tower();
+        popMatrix();
+        */
+        sidesOfPrism();
     }
 }
 
