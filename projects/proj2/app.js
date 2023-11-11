@@ -193,11 +193,11 @@ function setup(shaders) {
                 break;
 
             case 'ArrowUp': // Increase GAMMA
-                GAMMA += 1;
+                GAMMA += 0.1;
                 break;
 
             case 'ArrowDown': // Decrease GAMMA
-                GAMMA -= 1;
+                GAMMA -= 0.1;
                 break;
         }
     }
