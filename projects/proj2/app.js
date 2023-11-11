@@ -1,5 +1,5 @@
 import { buildProgramFromSources, loadShadersFromURLS, setupWebGL } from "../../libs/utils.js";
-import { ortho, lookAt, flatten, rotate, rotateX, rotateZ, mult, rotateY } from "../../libs/MV.js";
+import { ortho, lookAt, flatten, rotate, rotateX, rotateZ, mult, rotateY, translate } from "../../libs/MV.js";
 import { modelView, loadMatrix, multRotationY, multRotationX, multScale, pushMatrix, popMatrix, multTranslation, multRotationZ } from "../../libs/stack.js";
 
 
@@ -10,7 +10,7 @@ import * as CYLINDER from '../../libs/objects/cylinder.js';
 /** @type WebGLRenderingContext */
 let gl;
 
-const VP_DISTANCE = 10; // TODO por o vp_distance a 10
+let VP_DISTANCE = 3.5; // TODO por o vp_distance a 101
 
 let time = 0;           // Global simulation time in days
 let speed = 1 / 60.0;     // Speed (how many days added to time on each render pass
@@ -20,26 +20,20 @@ let animation = true;   // Animation is running
 let THETA = 0;
 let GAMMA = 0;
 
-const VIEWS = {
-    "1": lookAt([0, VP_DISTANCE * 0.9, VP_DISTANCE / 4], [0, VP_DISTANCE * 0.9, 0], [0, 1, 0]), //Front view
-    "2": lookAt([0, VP_DISTANCE / 4, 0], [0, 0, 0], [0, 0, -1]), //From Above
-    "3": lookAt([-VP_DISTANCE / 4, 0, 0], [0, 0, 0], [0, 1, 0]), //From left
-    //"4": lookAt([VP_DISTANCE * GAMMA / 4, VP_DISTANCE * THETA / 3, VP_DISTANCE], [0, 0, 0], [0, 1, 0]), //View proposed by the teacher, axiometric view
-    "4": lookAt([VP_DISTANCE/ 4, VP_DISTANCE/ 3, VP_DISTANCE], [0, 0, 0], [0, 1, 0]),
-};
 
-let activeView = VIEWS["4"];
 
 // Colors
 const COLOR_BEAM = [1, 1, 0, 1.0]; // yellow
 const COLOR_FLOOR_1 = [1, 1, 1, 1.0]; // White
 const COLOR_FLOOR_2 = [0.7, 0.7, 0.7, 1]; // Grey
-const COLOR_ROTATOR = [0.1, 0.1, 0.1, 1]; // Dark Grey
-
+const COLOR_ROTATOR = [0, 1, 0, 1]; // Red
+const COLOR_CART = [1, 0, 0, 1] // Red
+const COLOR_ROPE = [1, 1, 1, 1] //WHITE
+const CLOLOR_COUTNER_WEIGHT = [0, 0, 1, 1] //BLUE
 
 // Crane Parameters
 
-let T1 = 10; // Number of cubes in the first section of the tower
+let T1 = 11; // Number of cubes in the first section of the tower
 let T2 = T1 + 5; // Number of cubes in the second section of the tower
 
 let T3 = T1; // Number of prisms in the biggest section of the top bar
@@ -70,6 +64,24 @@ const ROTATOR_HEIGHT = L2 / 2; // Height of the cylinder that couples the top ba
 const ROTATOR_RADIUS = FLOOR_BLOCK_SIZE / 2;
 
 let topOfTowerHeight = CURRENT_SECOND_SECTION_HEIGHT + L2 * T2 + E2; // Height of the crane
+//let CraneHeight = topOfTowerHeight + ROTATOR_HEIGHT + ; // Height of the crane
+
+let ropeSize = L3; // Size of the rope that goes up and down from the cart
+let cartPosition = FLOOR_BLOCK_SIZE;
+
+
+let VIEWS = () => ({
+    "1": lookAt([0, VP_DISTANCE * 0.9, VP_DISTANCE / 4], [0, VP_DISTANCE * 0.9, 0], [0, 1, 0]), //Front view
+    "2": lookAt([0, VP_DISTANCE / 4, 0], [0, 0, 0], [0, 0, -1]), //From Above
+    "3": lookAt([-VP_DISTANCE / 4, 0, 0], [0, 0, 0], [0, 1, 0]), //From left
+    // "4": lookAt([VP_DISTANCE * GAMMA / 4, VP_DISTANCE * THETA / 3, VP_DISTANCE], [0, 0, 0], [0, 1, 0]), //View proposed by the teacher, axiometric view
+    "4": lookAt([VP_DISTANCE / 4, VP_DISTANCE / 3, VP_DISTANCE], [0, 0, 0], [0, 1, 0]),
+});
+
+
+
+let selectedView = "4";
+let activeView = VIEWS[selectedView];
 
 
 
@@ -80,8 +92,8 @@ function setup(shaders) {
     gl = setupWebGL(canvas);
 
     let program = buildProgramFromSources(gl, shaders["shader.vert"], shaders["shader.frag"]);
-    const incIndex = 1;
-    let mProjection = ortho(
+    const incIndex = 5; // TODO delete if useless
+    let mProjection = () => ortho(
         -VP_DISTANCE * aspect * incIndex,
         VP_DISTANCE * aspect * incIndex,
         -VP_DISTANCE * incIndex,
@@ -96,7 +108,6 @@ function setup(shaders) {
     window.addEventListener("resize", resize_canvas);
 
     document.onkeydown = function (event) {
-        console.log(event.key)
         switch (event.key) {
             case '0': // Toggle wireframe / solid mode
                 if (mode == gl.LINES)
@@ -105,25 +116,29 @@ function setup(shaders) {
                 break;
 
             case '1': // Toggle front view
-                activeView = VIEWS["1"];
+                selectedView = "1"
                 break;
 
             case '2': // Toggle top view
-                activeView = VIEWS["2"];
+                selectedView = "2"
                 break;
 
             case '3': // Toggle left view
-                activeView = VIEWS["3"];
+                selectedView = "3"
                 break;
 
             case '4': // Toggle axonometric view
-                activeView = VIEWS["4"];
+                selectedView = "4"
                 break;
 
             case 'w': // Rise UP
+                if (ropeSize > E3 * 2)
+                    ropeSize = ropeSize - L3 * 0.1;
                 break;
 
             case 's': // Lower Tip
+                if (ropeSize < topOfTowerHeight + ROTATOR_HEIGHT - E3) // E3 aqui é o Cart Height
+                    ropeSize = ropeSize + L3 * 0.1;
                 break;
 
             case 'i': // Expand Base
@@ -147,9 +162,18 @@ function setup(shaders) {
                 break;
 
             case 'a': // Slider outwards
+                const preCalcA = cartPosition + FLOOR_BLOCK_SIZE/20
+                if (preCalcA < (T3 + 0.5) * L3) {
+                    cartPosition = preCalcA;
+                }
+
                 break;
 
             case 'd': // Slider inwards
+                const preCalcD = cartPosition - FLOOR_BLOCK_SIZE/20;
+                if (preCalcD > FLOOR_BLOCK_SIZE) {
+                    cartPosition = preCalcD;
+                }
                 break;
 
             case 'ArrowLeft': // Increase THETA
@@ -171,6 +195,13 @@ function setup(shaders) {
         }
     }
 
+    window.addEventListener("wheel", (evt) => {
+        if (evt.deltaY > 0)
+            VP_DISTANCE *= 1.1;
+        else
+            VP_DISTANCE *= 0.9;
+    })
+
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
     CUBE.init(gl);
     CYLINDER.init(gl);
@@ -185,7 +216,7 @@ function setup(shaders) {
         aspect = canvas.width / canvas.height;
 
         gl.viewport(0, 0, canvas.width, canvas.height);
-        mProjection = ortho(-VP_DISTANCE * aspect, VP_DISTANCE * aspect, -VP_DISTANCE, VP_DISTANCE, -3 * VP_DISTANCE, 3 * VP_DISTANCE);
+        mProjection = () => ortho(-VP_DISTANCE * aspect * incIndex, VP_DISTANCE * aspect * incIndex, -VP_DISTANCE * incIndex, VP_DISTANCE * incIndex, -3 * VP_DISTANCE * incIndex, 3 * VP_DISTANCE * incIndex);
     }
 
     function uploadModelView(color) {
@@ -205,6 +236,42 @@ function setup(shaders) {
         CYLINDER.draw(gl, program, mode);
     }
 
+    /**
+     * This is the cart that moves along the top bar
+     */
+    function cart() {
+        multScale([L3 + E3, E3, L3 + E3])
+        uploadModelView(COLOR_CART)
+        CUBE.draw(gl, program, mode)
+    }
+
+    /**
+     * This is the rope that goes up and down from the cart
+     */
+    function rope() {
+        multTranslation([0, -ropeSize / 2, 0])
+        multScale([E3, ropeSize, E3])
+
+        uploadModelView(COLOR_ROPE)
+        CYLINDER.draw(gl, program, mode)
+    }
+
+    /**
+     * This is the cart and the rope that moves along the top bar
+     */
+    function cart_and_rope() {
+        pushMatrix();
+        /**/cart();
+        popMatrix();
+        multTranslation([0, -E3 / 2, 0])
+        rope();
+    }
+
+    function counter_weight() {
+        multScale([L3 + E3, L3 + E3, L3 + E3])
+        uploadModelView(CLOLOR_COUTNER_WEIGHT)
+        CUBE.draw(gl, program, mode)
+    }
 
     /**
      * This is the top bar of the crane in the cross axis
@@ -214,19 +281,29 @@ function setup(shaders) {
         multRotationY(90);
         multRotationZ(30);
         multTranslation([0, E3, 0]);
-        multTranslation([0, 0, -L3/2]);
+        multTranslation([0, 0, -L3 / 2]);
         pushMatrix();
-            top_bar_forward();
+        /**/pushMatrix();
+        /**//**/top_bar_forward();
+        /**/popMatrix();
+        /**/multTranslation([0, -E3 * 2, cartPosition /*FLOOR_BLOCK_SIZE*/]);
+        /**/multRotationZ(-30);
+        /**/multTranslation([-(L3) / 2 - E3, /*E3/2*/0, 0]);
+        /**/cart_and_rope();
         popMatrix();
 
         top_bar_backward();
+
+        multRotationZ(-30);
+        multTranslation([-(L3) / 2,  -(L3) / 2 - 2*E3, (L3) / 2]);
+        counter_weight();
     }
 
     /**
      * Draws the section of the top bar that goes forward
      */
     function top_bar_forward() {
-        for (let i = 0; i < T3+1; i++) { //TODO change value in loop condition to T3
+        for (let i = 0; i < T3 + 1; i++) { //TODO change value in loop condition to T3
             prismBase();
             sidesOfPrism();
             multTranslation([0, 0, L3]);
@@ -238,7 +315,7 @@ function setup(shaders) {
      * Draws the section of the top bar that goes backwards
      */
     function top_bar_backward() {
-        for (let i = 0; i < T4-1; i++) { //TODO change value in loop condition to T4
+        for (let i = 0; i < T4; i++) { //TODO change value in loop condition to T4
             multTranslation([0, 0, -L3]);
             sidesOfPrism();
             prismBase();
@@ -296,7 +373,8 @@ function setup(shaders) {
     /**
      * Create the floor with 2 tones, grey and white
      */
-    function floor() {  //TODO I dont know why but the floor looks completly white on my screen, might be a screen problem
+    function floor() { //DONE
+        multTranslation([0, -FLOOR_BLOCK_SIZE / 200, 0])
         multScale([FLOOR_BLOCK_SIZE, -FLOOR_BLOCK_SIZE / 100, FLOOR_BLOCK_SIZE]); // Scale of the blocks that make the floor
 
         // so the floor is centered on the middle of the screen
@@ -316,7 +394,8 @@ function setup(shaders) {
         }
     }
 
-    /**
+    /**        // cart();
+
      * Draws the beam from witch the prisms are made of
      */
     function prismBeam() {
@@ -441,15 +520,16 @@ function setup(shaders) {
 
         gl.useProgram(program);
 
-        gl.uniformMatrix4fv(gl.getUniformLocation(program, "mProjection"), false, flatten(mProjection));
+        gl.uniformMatrix4fv(gl.getUniformLocation(program, "mProjection"), false, flatten(mProjection()));
+        activeView = VIEWS()[selectedView];
 
         loadMatrix(activeView); // Load corresponding perspective matrix
 
         /** test view change */
-        if (activeView == VIEWS["4"]) {
+        if (selectedView == "4") {
             //multRotationZ(GAMMA); // com o z nao funciona bem
             multRotationY(THETA);
-        }           
+        }
         /** end of test */
 
 
@@ -457,27 +537,22 @@ function setup(shaders) {
         pushMatrix();
         /**/floor();
         popMatrix();
-        
+
         pushMatrix();
         /**/multTranslation([-(L1 + E1) / 2, 0, -(L1 - E1) / 2]);
         /**/tower();
         popMatrix();
-        pushMatrix();  
+        pushMatrix();
         /**///multTranslation([0, LOWER_SECTION_HEIGHT + CURRENT_SECOND_SECTION_HEIGHT + ROTATOR_HEIGHT, 0]);
-        /**/multTranslation([0, topOfTowerHeight + ROTATOR_HEIGHT/2, 0]);
-        /**/multTranslation([-FLOOR_BLOCK_SIZE/2, 0, -FLOOR_BLOCK_SIZE/2]);
+        /**/multTranslation([0, topOfTowerHeight + ROTATOR_HEIGHT / 2, 0]);
+        /**/multTranslation([-FLOOR_BLOCK_SIZE / 2, 0, -FLOOR_BLOCK_SIZE / 2]);
         /**/multRotationY(CRANE_ROTATION_ANGLE);
         /**/pushMatrix();
         /**//**/rotator();
         /**/popMatrix();
-        /**/multTranslation([0, ROTATOR_HEIGHT/2, -(L3+E3)/2]);  
+        /**/multTranslation([0, ROTATOR_HEIGHT / 2, -(L3 + E3) / 2]);
         /**/top_bar();
-            
-        popMatrix();
-
-
-        //second_section();
-
+        /**/popMatrix();
     }
 }
 
