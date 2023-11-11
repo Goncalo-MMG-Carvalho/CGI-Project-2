@@ -58,7 +58,7 @@ const MAX_SECOND_SECTION_HEIGHT = LOWER_SECTION_HEIGHT * 0.9; // Height of the b
 const MIN_SECOND_SECTION_HEIGHT = MAX_SECOND_SECTION_HEIGHT * 0.05; // Minimum height of the base second section of the crane
 
 let CURRENT_SECOND_SECTION_HEIGHT = MAX_SECOND_SECTION_HEIGHT / 2; // Current height of the second section of the crane to the floor
-let CRANE_ROTATION_ANGLE = 0; // Current rotation angle of the crane
+let CRANE_ROTATION_ANGLE = 180; // Current rotation angle of the crane
 
 const ROTATOR_HEIGHT = L2 / 2; // Height of the cylinder that couples the top bar to the crane
 const ROTATOR_RADIUS = FLOOR_BLOCK_SIZE / 2;
@@ -68,15 +68,15 @@ const MAX_TOP_OF_TOWER_HEIGHT = MAX_SECOND_SECTION_HEIGHT + L2 * T2 + E2; // Hei
 const MAX_CRANE_HEIGHT = MAX_TOP_OF_TOWER_HEIGHT + ROTATOR_HEIGHT + Math.sqrt(3) * L3 / 2; // Height of the crane
 
 let ropeSize = L3; // Size of the rope that goes up and down from the cart
-let cartPosition = FLOOR_BLOCK_SIZE;
+let cartPosition = (T3 + 0.5) * L3;
 
 
 let VIEWS = () => ({
     "1": lookAt([0, MAX_CRANE_HEIGHT/2, VP_DISTANCE / 4], [0, MAX_CRANE_HEIGHT/2, 0], [0, 1, 0]), //Front view
     "2": lookAt([0, MAX_CRANE_HEIGHT/2 + VP_DISTANCE / 4, 0], [0, MAX_CRANE_HEIGHT/2, 0], [0, 0, -1]), //From Above
     "3": lookAt([-VP_DISTANCE / 4, MAX_CRANE_HEIGHT/2, 0], [0, MAX_CRANE_HEIGHT/2, 0], [0, 1, 0]), //From left
-    // "4": lookAt([VP_DISTANCE * GAMMA / 4, VP_DISTANCE * THETA / 3, VP_DISTANCE], [0, 0, 0], [0, 1, 0]), //View proposed by the teacher, axiometric view
-    "4": lookAt([VP_DISTANCE/4 /*+ THETA*/, VP_DISTANCE / 3 + GAMMA/*+ MAX_CRANE_HEIGHT/2*/, VP_DISTANCE /*+ THETA */], [0, 0/*MAX_CRANE_HEIGHT/2*/, 0], [0, 1, 0]),
+    //"4": lookAt([VP_DISTANCE/4 , VP_DISTANCE / 3 + GAMMA , VP_DISTANCE], [0, 0, 0], [0, 1, 0]), BOM
+    "4": lookAt([VP_DISTANCE/4 , VP_DISTANCE / 3 + GAMMA + MAX_CRANE_HEIGHT/2 , VP_DISTANCE], [0, MAX_CRANE_HEIGHT/2, 0], [0, 1, 0]),
 });
 
 
