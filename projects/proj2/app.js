@@ -64,18 +64,19 @@ const ROTATOR_HEIGHT = L2 / 2; // Height of the cylinder that couples the top ba
 const ROTATOR_RADIUS = FLOOR_BLOCK_SIZE / 2;
 
 let topOfTowerHeight = CURRENT_SECOND_SECTION_HEIGHT + L2 * T2 + E2; // Height of the crane
-//let CraneHeight = topOfTowerHeight + ROTATOR_HEIGHT + ; // Height of the crane
+const MAX_TOP_OF_TOWER_HEIGHT = MAX_SECOND_SECTION_HEIGHT + L2 * T2 + E2; // Height of the crane
+const MAX_CRANE_HEIGHT = MAX_TOP_OF_TOWER_HEIGHT + ROTATOR_HEIGHT + Math.sqrt(3) * L3 / 2; // Height of the crane
 
 let ropeSize = L3; // Size of the rope that goes up and down from the cart
 let cartPosition = FLOOR_BLOCK_SIZE;
 
 
 let VIEWS = () => ({
-    "1": lookAt([0, VP_DISTANCE * 0.9, VP_DISTANCE / 4], [0, VP_DISTANCE * 0.9, 0], [0, 1, 0]), //Front view
-    "2": lookAt([0, VP_DISTANCE / 4, 0], [0, 0, 0], [0, 0, -1]), //From Above
-    "3": lookAt([-VP_DISTANCE / 4, 0, 0], [0, 0, 0], [0, 1, 0]), //From left
+    "1": lookAt([0, MAX_CRANE_HEIGHT/2, VP_DISTANCE / 4], [0, MAX_CRANE_HEIGHT/2, 0], [0, 1, 0]), //Front view
+    "2": lookAt([0, MAX_CRANE_HEIGHT/2 + VP_DISTANCE / 4, 0], [0, MAX_CRANE_HEIGHT/2, 0], [0, 0, -1]), //From Above
+    "3": lookAt([-VP_DISTANCE / 4, MAX_CRANE_HEIGHT/2, 0], [0, MAX_CRANE_HEIGHT/2, 0], [0, 1, 0]), //From left
     // "4": lookAt([VP_DISTANCE * GAMMA / 4, VP_DISTANCE * THETA / 3, VP_DISTANCE], [0, 0, 0], [0, 1, 0]), //View proposed by the teacher, axiometric view
-    "4": lookAt([VP_DISTANCE / 4, VP_DISTANCE / 3, VP_DISTANCE], [0, 0, 0], [0, 1, 0]),
+    "4": lookAt([VP_DISTANCE/4 /*+ THETA*/, VP_DISTANCE / 3 + GAMMA/*+ MAX_CRANE_HEIGHT/2*/, VP_DISTANCE /*+ THETA */], [0, 0/*MAX_CRANE_HEIGHT/2*/, 0], [0, 1, 0]),
 });
 
 
@@ -108,6 +109,7 @@ function setup(shaders) {
     window.addEventListener("resize", resize_canvas);
 
     document.onkeydown = function (event) {
+        console.log("Gamma", GAMMA);
         switch (event.key) {
             case '0': // Toggle wireframe / solid mode
                 if (mode == gl.LINES)
@@ -142,15 +144,20 @@ function setup(shaders) {
                 break;
 
             case 'i': // Expand Base
-                if (CURRENT_SECOND_SECTION_HEIGHT < MAX_SECOND_SECTION_HEIGHT)
+                if (CURRENT_SECOND_SECTION_HEIGHT < MAX_SECOND_SECTION_HEIGHT) {
                     CURRENT_SECOND_SECTION_HEIGHT += 0.1;
-                topOfTowerHeight = CURRENT_SECOND_SECTION_HEIGHT + L2 * T2 + E2
+                    topOfTowerHeight = CURRENT_SECOND_SECTION_HEIGHT + L2 * T2 + E2;
+                    //CraneHeight = topOfTowerHeight + ROTATOR_HEIGHT + Math.sqrt(3) * L3 / 2;
+                }
                 break;
 
             case 'k': // Contract Base
-                if (CURRENT_SECOND_SECTION_HEIGHT > MIN_SECOND_SECTION_HEIGHT)
+                if (CURRENT_SECOND_SECTION_HEIGHT > MIN_SECOND_SECTION_HEIGHT){
                     CURRENT_SECOND_SECTION_HEIGHT -= 0.1;
-                topOfTowerHeight = CURRENT_SECOND_SECTION_HEIGHT + L2 * T2 + E2
+                    topOfTowerHeight = CURRENT_SECOND_SECTION_HEIGHT + L2 * T2 + E2;
+                    //CraneHeight = topOfTowerHeight + ROTATOR_HEIGHT + Math.sqrt(3) * L3 / 2;
+                }
+                
                 break;
 
             case 'j': // Rotate CCW
@@ -178,7 +185,7 @@ function setup(shaders) {
 
             case 'ArrowLeft': // Increase THETA
                 THETA += 1;
-                console.log(THETA);
+                //console.log(THETA);
                 break;
 
             case 'ArrowRight': // Decrease THETA
@@ -288,14 +295,15 @@ function setup(shaders) {
         /**/popMatrix();
         /**/multTranslation([0, -E3 * 2, cartPosition /*FLOOR_BLOCK_SIZE*/]);
         /**/multRotationZ(-30);
-        /**/multTranslation([-(L3) / 2 - E3, /*E3/2*/0, 0]);
+        /**/multTranslation([-(L3) / 2 - E3, E3/2, 0]);
         /**/cart_and_rope();
         popMatrix();
 
         top_bar_backward();
 
         multRotationZ(-30);
-        multTranslation([-(L3) / 2,  -(L3) / 2 - 2*E3, (L3) / 2]);
+        multTranslation([-(L3) / 2,  -(L3) / 2 - 1.25*E3, (L3) / 2]);
+        multTranslation([0, 0, L3]);
         counter_weight();
     }
 
@@ -394,7 +402,7 @@ function setup(shaders) {
         }
     }
 
-    /**        // cart();
+    /** 
 
      * Draws the beam from witch the prisms are made of
      */
@@ -528,6 +536,7 @@ function setup(shaders) {
         /** test view change */
         if (selectedView == "4") {
             //multRotationZ(GAMMA); // com o z nao funciona bem
+            //multRotationX(GAMMA);
             multRotationY(THETA);
         }
         /** end of test */
@@ -550,7 +559,7 @@ function setup(shaders) {
         /**/pushMatrix();
         /**//**/rotator();
         /**/popMatrix();
-        /**/multTranslation([0, ROTATOR_HEIGHT / 2, -(L3 + E3) / 2]);
+        /**/multTranslation([0, (ROTATOR_HEIGHT - E3/3) / 2, -(L3 + E3) / 2]);
         /**/top_bar();
         /**/popMatrix();
     }
