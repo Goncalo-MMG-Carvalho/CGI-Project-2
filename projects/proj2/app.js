@@ -6,11 +6,12 @@ import { modelView, loadMatrix, multRotationY, multRotationX, multScale, pushMat
 //import * as SPHERE from '../../libs/objects/sphere.js';
 import * as CUBE from '../../libs/objects/cube.js';
 import * as CYLINDER from '../../libs/objects/cylinder.js';
+import * as BUNNY from '../../libs/objects/bunny.js';
 
 /** @type WebGLRenderingContext */
 let gl;
 
-let VP_DISTANCE = 3.5; // TODO por o vp_distance a 101
+let VP_DISTANCE = 2; // TODO por o vp_distance a 101
 
 let time = 0;           // Global simulation time in days
 let speed = 1 / 60.0;     // Speed (how many days added to time on each render pass
@@ -24,12 +25,14 @@ let GAMMA = 0;
 
 // Colors
 const COLOR_BEAM = [1, 1, 0, 1.0]; // yellow
+const COLOR_BEAM_2 = [204/255, 204/255, 0, 1.0]; // Dark yellow
 const COLOR_FLOOR_1 = [1, 1, 1, 1.0]; // White
-const COLOR_FLOOR_2 = [0.7, 0.7, 0.7, 1]; // Grey
-const COLOR_ROTATOR = [0, 1, 0, 1]; // Red
+const COLOR_FLOOR_2 = [0.7, 0.7, 0.7, 1]; // light Grey
+const COLOR_ROTATOR = [0, 1, 0, 1]; // Green
 const COLOR_CART = [1, 0, 0, 1] // Red
 const COLOR_ROPE = [1, 1, 1, 1] //WHITE
-const CLOLOR_COUTNER_WEIGHT = [0, 0, 1, 1] //BLUE
+const COLOR_COUNTER_WEIGHT = [0, 0, 1, 1] //BLUE
+const COLOR_BUNNY = [0.5, 1, 1, 1] //Weird blue
 
 // Crane Parameters
 
@@ -39,7 +42,7 @@ let T2 = T1 + 5; // Number of cubes in the second section of the tower
 let T3 = T1; // Number of prisms in the biggest section of the top bar
 let T4 = T3 / 3; // Number of prisms in the smallest section of the top bar
 
-let E1 = 0.1; // Thickness of the edges of the tower
+let E1 = 0.3; // Thickness of the edges of the tower
 let E2 = E1; // Thickness of the edges of the second section of the tower
 let E3 = E2; // Thickness of the edges of the top bar
 
@@ -75,8 +78,7 @@ let VIEWS = () => ({
     "1": lookAt([0, MAX_CRANE_HEIGHT/2, VP_DISTANCE / 4], [0, MAX_CRANE_HEIGHT/2, 0], [0, 1, 0]), //Front view
     "2": lookAt([0, MAX_CRANE_HEIGHT/2 + VP_DISTANCE / 4, 0], [0, MAX_CRANE_HEIGHT/2, 0], [0, 0, -1]), //From Above
     "3": lookAt([-VP_DISTANCE / 4, MAX_CRANE_HEIGHT/2, 0], [0, MAX_CRANE_HEIGHT/2, 0], [0, 1, 0]), //From left
-    //"4": lookAt([VP_DISTANCE/4 , VP_DISTANCE / 3 + GAMMA , VP_DISTANCE], [0, 0, 0], [0, 1, 0]), BOM
-    "4": lookAt([VP_DISTANCE/4 , VP_DISTANCE / 3 + GAMMA + MAX_CRANE_HEIGHT/2 , VP_DISTANCE], [0, MAX_CRANE_HEIGHT/2, 0], [0, 1, 0]),
+    "4": lookAt([VP_DISTANCE/4 , VP_DISTANCE / 3 + GAMMA + MAX_CRANE_HEIGHT/2 , VP_DISTANCE], [0, MAX_CRANE_HEIGHT/2, 0], [0, 1, 0]), //Axonometric
 });
 
 
@@ -93,7 +95,7 @@ function setup(shaders) {
     gl = setupWebGL(canvas);
 
     let program = buildProgramFromSources(gl, shaders["shader.vert"], shaders["shader.frag"]);
-    const incIndex = 5; // TODO delete if useless
+    const incIndex = 5;
     let mProjection = () => ortho(
         -VP_DISTANCE * aspect * incIndex,
         VP_DISTANCE * aspect * incIndex,
@@ -103,7 +105,7 @@ function setup(shaders) {
         3 * VP_DISTANCE * incIndex
     );
 
-    mode = gl.LINES; // TODO change to gl.TRIANGLES when delivering project
+    mode = gl.TRIANGLES;
 
     resize_canvas();
     window.addEventListener("resize", resize_canvas);
@@ -131,6 +133,10 @@ function setup(shaders) {
 
             case '4': // Toggle axonometric view
                 selectedView = "4"
+                break;
+
+            case 'r': // Reset
+
                 break;
 
             case 'w': // Rise UP
@@ -193,11 +199,15 @@ function setup(shaders) {
                 break;
 
             case 'ArrowUp': // Increase GAMMA
-                GAMMA += 0.1;
+                if (GAMMA < 1.5) {
+                    GAMMA += 0.1;
+                }
                 break;
 
             case 'ArrowDown': // Decrease GAMMA
-                GAMMA -= 0.1;
+                if (VP_DISTANCE / 3 + MAX_CRANE_HEIGHT/2 + GAMMA > MAX_CRANE_HEIGHT/2 + 0.1 ) {
+                    GAMMA -= 0.1;
+                }
                 break;
         }
     }
@@ -212,6 +222,7 @@ function setup(shaders) {
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
     CUBE.init(gl);
     CYLINDER.init(gl);
+    BUNNY.init(gl);
     gl.enable(gl.DEPTH_TEST);   // Enables Z-buffer depth test
 
     window.requestAnimationFrame(render);
@@ -275,10 +286,71 @@ function setup(shaders) {
     }
 
     function counter_weight() {
-        multScale([L3 + E3, L3 + E3, L3 + E3])
-        uploadModelView(CLOLOR_COUTNER_WEIGHT)
-        CUBE.draw(gl, program, mode)
+        // multScale([L3 + E3, L3 + E3, L3 + E3])
+        // uploadModelView(CLOLOR_COUTNER_WEIGHT)
+        // CUBE.draw(gl, program, mode)
+
+        pushMatrix(); //4 ropes that support the counter weight
+            counter_weight_ropes();
+        popMatrix();
+
+        
+        /**/multTranslation([0, -L3, 0]); // position the base of the counter weight
+
+        pushMatrix(); // the base of the counter weight
+        /**/multScale([L3, E3, L3]);
+        /**/uploadModelView(COLOR_COUNTER_WEIGHT);
+        /**/CUBE.draw(gl, program, mode);
+        popMatrix();
+
+        multTranslation([0, E3/2, 0]) //conspensete half the height of the base of the counter weight
+
+        multRotationY(90);
+        // The counter weight is a bunny
+        multScale([(L3 + E3) * 5, (L3 + E3) * 5, (L3 + E3) * 5]);
+        uploadModelView(COLOR_BUNNY);
+        BUNNY.draw(gl, program, mode);
+        
+
     }
+
+    /**
+     * 4 counter weight ropes
+     */
+    function counter_weight_ropes() {
+        multTranslation([0, -(L3- E3)/2, 0]) // para centrar os eixos xyz no centro da posição das cordas
+        
+        pushMatrix();
+        /**/multTranslation([-(L3 - E3)/2 , 0, -(L3 - E3)/2 ]);
+        /**/CW_ROPE();
+        popMatrix();
+
+        pushMatrix();
+        /**/multTranslation([(L3 - E3)/2 , 0, -(L3 - E3)/2 ]);
+        /**/CW_ROPE();
+        popMatrix();
+
+        pushMatrix();
+        /**/multTranslation([-(L3 - E3)/2 , 0, (L3 - E3)/2 ]);
+        /**/CW_ROPE();
+        popMatrix();
+        
+        multTranslation([(L3 - E3)/2 , 0, (L3 - E3)/2 ]);
+        CW_ROPE();
+        
+    }
+
+    /**
+     * Single counter weight rope
+     */
+    function CW_ROPE() { 
+        multScale([E3, L3, E3]);
+        uploadModelView(COLOR_ROPE);
+        CYLINDER.draw(gl, program, mode);
+
+    }
+
+
 
     /**
      * This is the top bar of the crane in the cross axis
@@ -293,7 +365,7 @@ function setup(shaders) {
         /**/pushMatrix();
         /**//**/top_bar_forward();
         /**/popMatrix();
-        /**/multTranslation([0, -E3 * 2, cartPosition /*FLOOR_BLOCK_SIZE*/]);
+        /**/multTranslation([0, -E3 * 2, cartPosition]);
         /**/multRotationZ(-30);
         /**/multTranslation([-(L3) / 2 - E3, E3/2, 0]);
         /**/cart_and_rope();
@@ -302,8 +374,13 @@ function setup(shaders) {
         top_bar_backward();
 
         multRotationZ(-30);
-        multTranslation([-(L3) / 2,  -(L3) / 2 - 1.25*E3, (L3) / 2]);
+
+        //multTranslation([0,  -(L3) / 2 - 1.25*E3, 0]);
+        multTranslation([0,  -E3, 0]);
+        multTranslation([-(L3) / 2, 0, (L3) / 2]);
         multTranslation([0, 0, L3]);
+        
+        
         counter_weight();
     }
 
@@ -311,7 +388,7 @@ function setup(shaders) {
      * Draws the section of the top bar that goes forward
      */
     function top_bar_forward() {
-        for (let i = 0; i < T3 + 1; i++) { //TODO change value in loop condition to T3
+        for (let i = 0; i < T3 + 1; i++) {
             prismBase();
             sidesOfPrism();
             multTranslation([0, 0, L3]);
@@ -323,7 +400,7 @@ function setup(shaders) {
      * Draws the section of the top bar that goes backwards
      */
     function top_bar_backward() {
-        for (let i = 0; i < T4; i++) { //TODO change value in loop condition to T4
+        for (let i = 0; i < T4; i++) {
             multTranslation([0, 0, -L3]);
             sidesOfPrism();
             prismBase();
@@ -519,30 +596,24 @@ function setup(shaders) {
         cubeBeam(isFirstSection);
     }
 
-
     function render() {
         if (animation) time += speed;
+        
         window.requestAnimationFrame(render);
 
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
         gl.useProgram(program);
-
         gl.uniformMatrix4fv(gl.getUniformLocation(program, "mProjection"), false, flatten(mProjection()));
+        
         activeView = VIEWS()[selectedView];
-
         loadMatrix(activeView); // Load corresponding perspective matrix
 
-        /** test view change */
         if (selectedView == "4") {
-            //multRotationZ(GAMMA); // com o z nao funciona bem
-            //multRotationX(GAMMA);
             multRotationY(THETA);
         }
-        /** end of test */
 
-
-        multTranslation([L1, 0, L1]); // Recentar o desenho todo no centro do ecrã
+        multTranslation([L1, 0, L1]); // Recentar o desenho no centro do ecrã
+        
         pushMatrix();
         /**/floor();
         popMatrix();
@@ -551,17 +622,20 @@ function setup(shaders) {
         /**/multTranslation([-(L1 + E1) / 2, 0, -(L1 - E1) / 2]);
         /**/tower();
         popMatrix();
+
         pushMatrix();
-        /**///multTranslation([0, LOWER_SECTION_HEIGHT + CURRENT_SECOND_SECTION_HEIGHT + ROTATOR_HEIGHT, 0]);
         /**/multTranslation([0, topOfTowerHeight + ROTATOR_HEIGHT / 2, 0]);
         /**/multTranslation([-FLOOR_BLOCK_SIZE / 2, 0, -FLOOR_BLOCK_SIZE / 2]);
         /**/multRotationY(CRANE_ROTATION_ANGLE);
+
         /**/pushMatrix();
         /**//**/rotator();
         /**/popMatrix();
+
         /**/multTranslation([0, (ROTATOR_HEIGHT - E3/3) / 2, -(L3 + E3) / 2]);
         /**/top_bar();
-        /**/popMatrix();
+        popMatrix();
+
     }
 }
 
