@@ -11,7 +11,7 @@ import * as BUNNY from '../../libs/objects/bunny.js';
 /** @type WebGLRenderingContext */
 let gl;
 
-let VP_DISTANCE = 2; // TODO por o vp_distance a 101
+let VP_DISTANCE = 3.5; // TODO por o vp_distance a 101
 
 let time = 0;           // Global simulation time in days
 let speed = 1 / 60.0;     // Speed (how many days added to time on each render pass
@@ -42,7 +42,7 @@ let T2 = T1 + 5; // Number of cubes in the second section of the tower
 let T3 = T1; // Number of prisms in the biggest section of the top bar
 let T4 = T3 / 3; // Number of prisms in the smallest section of the top bar
 
-let E1 = 0.3; // Thickness of the edges of the tower
+let E1 = 1; // Thickness of the edges of the tower
 let E2 = E1; // Thickness of the edges of the second section of the tower
 let E3 = E2; // Thickness of the edges of the top bar
 
@@ -69,6 +69,7 @@ const ROTATOR_RADIUS = FLOOR_BLOCK_SIZE / 2;
 let topOfTowerHeight = CURRENT_SECOND_SECTION_HEIGHT + L2 * T2 + E2; // Height of the crane
 const MAX_TOP_OF_TOWER_HEIGHT = MAX_SECOND_SECTION_HEIGHT + L2 * T2 + E2; // Height of the crane
 const MAX_CRANE_HEIGHT = MAX_TOP_OF_TOWER_HEIGHT + ROTATOR_HEIGHT + Math.sqrt(3) * L3 / 2; // Height of the crane
+
 
 let ropeSize = L3; // Size of the rope that goes up and down from the cart
 let cartPosition = (T3 + 0.5) * L3;
@@ -350,37 +351,30 @@ function setup(shaders) {
 
     }
 
-
-
     /**
      * This is the top bar of the crane in the cross axis
      * -> This part is static
      */
     function top_bar() {
-        multRotationY(90);
-        multRotationZ(30);
-        multTranslation([0, E3, 0]);
-        multTranslation([0, 0, -L3 / 2]);
         pushMatrix();
-        /**/pushMatrix();
-        /**//**/top_bar_forward();
-        /**/popMatrix();
+        /**/top_bar_forward();
+        popMatrix();
+
+        pushMatrix();
         /**/multTranslation([0, -E3 * 2, cartPosition]);
         /**/multRotationZ(-30);
-        /**/multTranslation([-(L3) / 2 - E3, E3/2, 0]);
+        /**/multTranslation([-(L3) / 2 - E3, 3*E3/4, 0]);
         /**/cart_and_rope();
         popMatrix();
 
-        top_bar_backward();
+        pushMatrix();
+        /**/top_bar_backward();
+        popMatrix();
 
         multRotationZ(-30);
-
-        //multTranslation([0,  -(L3) / 2 - 1.25*E3, 0]);
         multTranslation([0,  -E3, 0]);
         multTranslation([-(L3) / 2, 0, (L3) / 2]);
-        multTranslation([0, 0, L3]);
-        
-        
+        multTranslation([0, 0, -(L3+E3)*(T4-1)]);
         counter_weight();
     }
 
@@ -496,16 +490,18 @@ function setup(shaders) {
     function prismBase() {
 
         pushMatrix();
-        prismBeam();
+        /**/prismBeam();
         popMatrix();
+
         pushMatrix();
-        multRotationZ(60);
-        prismBeam();
+        /**/multRotationZ(60);
+        /**/prismBeam();
         popMatrix();
+
         pushMatrix();
-        multTranslation([0, L3, 0]);
-        multRotationZ(120);
-        prismBeam();
+        /**/multTranslation([0, L3, 0]);
+        /**/multRotationZ(120);
+        /**/prismBeam();
         popMatrix();
     }
 
@@ -513,21 +509,27 @@ function setup(shaders) {
      * Draws the side Beams of the prism
      */
     function sidesOfPrism() {
+        
         pushMatrix();
-        multRotationX(90);
-        prismBeam();
+        /**/multRotationX(90);
+        multRotationY(-30)
+        /**/prismBeam();
         popMatrix();
+
         pushMatrix();
-        multTranslation([0, L3, 0]);
-        multRotationX(90);
-        prismBeam();
+        /**/multTranslation([0, L3, 0]);
+        /**/multRotationX(90);
+        /**/multRotationY(-30)
+        /**/prismBeam();
         popMatrix();
+
         pushMatrix();
-        multRotationZ(60);
-        multTranslation([0, L3, 0]);
-        multRotationX(90);
-        multRotationY(30);
-        prismBeam();
+        /**/multRotationZ(60);
+        /**/multTranslation([0, L3, 0]);
+        /**/multRotationX(90);
+        // /**/multRotationY(30);
+        // /**/multRotationY(-30)
+        /**/prismBeam();
         popMatrix();
     }
 
@@ -632,10 +634,13 @@ function setup(shaders) {
         /**//**/rotator();
         /**/popMatrix();
 
-        /**/multTranslation([0, (ROTATOR_HEIGHT - E3/3) / 2, -(L3 + E3) / 2]);
+        /**/multTranslation([0, (ROTATOR_HEIGHT) / 2, -(L3 + E3) / 2]);
+        /**/multTranslation([0, E3/2, 0]);
+        /**/multRotationY(90);
+        /**/multRotationZ(30);
+        /**/multTranslation([-E3/2, 0, -L3 / 2]);
         /**/top_bar();
         popMatrix();
-
     }
 }
 
