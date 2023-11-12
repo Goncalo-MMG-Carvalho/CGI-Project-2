@@ -11,7 +11,11 @@ import * as BUNNY from '../../libs/objects/bunny.js';
 /** @type WebGLRenderingContext */
 let gl;
 
-let VP_DISTANCE = 3.5; // TODO por o vp_distance a 101
+/**
+ * Can not be  <= 0
+ */
+const DEFAULT_VP_DISTANCE = 3.5;
+let VP_DISTANCE = DEFAULT_VP_DISTANCE;
 
 let time = 0;           // Global simulation time in days
 let speed = 1 / 60.0;     // Speed (how many days added to time on each render pass
@@ -22,10 +26,9 @@ let THETA = 0;
 let GAMMA = 0;
 
 
-
 // Colors
 const COLOR_BEAM = [1, 1, 0, 1.0]; // yellow
-const COLOR_BEAM_2 = [204/255, 204/255, 0, 1.0]; // Dark yellow
+const COLOR_BEAM_2 = [220/255, 220/255, 0, 1.0]; // Slightly darker yellow, to facilitate the visualization
 const COLOR_FLOOR_1 = [1, 1, 1, 1.0]; // White
 const COLOR_FLOOR_2 = [0.7, 0.7, 0.7, 1]; // light Grey
 const COLOR_ROTATOR = [0, 1, 0, 1]; // Green
@@ -35,20 +38,19 @@ const COLOR_COUNTER_WEIGHT = [0, 0, 1, 1] //BLUE
 const COLOR_BUNNY = [0.5, 1, 1, 1] //Weird blue
 
 // Crane Parameters
+const T1 = 11; // Number of cubes in the first section of the tower
+const T2 = T1 + 5; // Number of cubes in the second section of the tower
 
-let T1 = 11; // Number of cubes in the first section of the tower
-let T2 = T1 + 5; // Number of cubes in the second section of the tower
+const T3 = T1; // Number of prisms in the biggest section of the top bar
+const T4 = T3 / 3; // Number of prisms in the smallest section of the top bar
 
-let T3 = T1; // Number of prisms in the biggest section of the top bar
-let T4 = T3 / 3; // Number of prisms in the smallest section of the top bar
+const E1 = DEFAULT_VP_DISTANCE / 35; // Thickness of the edges of the tower
+const E2 = E1; // Thickness of the edges of the second section of the tower
+const E3 = E2; // Thickness of the edges of the top bar
 
-let E1 = 1; // Thickness of the edges of the tower
-let E2 = E1; // Thickness of the edges of the second section of the tower
-let E3 = E2; // Thickness of the edges of the top bar
-
-let L1 = 10 * E1;  // Length of the beam of the first section of the tower
-let L2 = L1 - 2 * E1; // Length of the beam of the second section of the tower
-let L3 = L2; // Length of the beam of the top bar
+const L1 = 10 * E1;  // Length of the beam of the first section of the tower
+const L2 = L1 - 2 * E1; // Length of the beam of the second section of the tower
+const L3 = L2; // Length of the beam of the top bar
 
 // Floor
 const FLOOR_BLOCK_SIZE = 2 * L1; // Length of the floor
@@ -70,17 +72,36 @@ let topOfTowerHeight = CURRENT_SECOND_SECTION_HEIGHT + L2 * T2 + E2; // Height o
 const MAX_TOP_OF_TOWER_HEIGHT = MAX_SECOND_SECTION_HEIGHT + L2 * T2 + E2; // Height of the crane
 const MAX_CRANE_HEIGHT = MAX_TOP_OF_TOWER_HEIGHT + ROTATOR_HEIGHT + Math.sqrt(3) * L3 / 2; // Height of the crane
 
+let MAX_ROPE_SIZE = topOfTowerHeight + ROTATOR_HEIGHT - 1.25*E3; // Maximum size of the rope that goes up and down from the cart
+const MIN_ROPE_SIZE = E3 * 2; // Minimum size of the rope that goes up and down from the cart
+
+const MAX_CART_POSITION = (T3 + 0.5) * L3
+const MIN_CART_POSITION = FLOOR_BLOCK_SIZE
 
 let ropeSize = L3; // Size of the rope that goes up and down from the cart
-let cartPosition = (T3 + 0.5) * L3;
+let cartPosition = MAX_CART_POSITION; // Position of the cart along the top bar
+
 
 
 let VIEWS = () => ({
     "1": lookAt([0, MAX_CRANE_HEIGHT/2, VP_DISTANCE / 4], [0, MAX_CRANE_HEIGHT/2, 0], [0, 1, 0]), //Front view
-    "2": lookAt([0, MAX_CRANE_HEIGHT/2 + VP_DISTANCE / 4, 0], [0, MAX_CRANE_HEIGHT/2, 0], [0, 0, -1]), //From Above
+
+    "2": lookAt([0, MAX_CRANE_HEIGHT/2 + VP_DISTANCE / 4, 0], [0, 0, 0], [0, 0, -1]), //From Above
+
     "3": lookAt([-VP_DISTANCE / 4, MAX_CRANE_HEIGHT/2, 0], [0, MAX_CRANE_HEIGHT/2, 0], [0, 1, 0]), //From left
+
     "4": lookAt([VP_DISTANCE/4 , VP_DISTANCE / 3 + GAMMA + MAX_CRANE_HEIGHT/2 , VP_DISTANCE], [0, MAX_CRANE_HEIGHT/2, 0], [0, 1, 0]), //Axonometric
 });
+
+// let TEST_VIEWS = () => ({
+//     "1": lookAt([0, 0, VP_DISTANCE / 4], [0, 0, 0], [0, 1, 0]), //Front view
+
+//     "2": lookAt([0, 0 + VP_DISTANCE / 4, 0], [0, 0, 0], [0, 0, -1]), //From Above
+
+//     "3": lookAt([-VP_DISTANCE / 4, 0, 0], [0, 0, 0], [0, 1, 0]), //From left
+
+//     "4": lookAt([VP_DISTANCE/4 , VP_DISTANCE / 3 + GAMMA + MAX_CRANE_HEIGHT/2 , VP_DISTANCE], [0, MAX_CRANE_HEIGHT/2, 0], [0, 1, 0]), //Axonometric
+// });
 
 
 
@@ -112,7 +133,6 @@ function setup(shaders) {
     window.addEventListener("resize", resize_canvas);
 
     document.onkeydown = function (event) {
-        console.log("Gamma", GAMMA);
         switch (event.key) {
             case '0': // Toggle wireframe / solid mode
                 if (mode == gl.LINES)
@@ -121,15 +141,18 @@ function setup(shaders) {
                 break;
 
             case '1': // Toggle front view
-                selectedView = "1"
+                selectedView = "1";
+                VP_DISTANCE = DEFAULT_VP_DISTANCE * 0.8;
                 break;
 
             case '2': // Toggle top view
-                selectedView = "2"
+                selectedView = "2";
+                VP_DISTANCE = DEFAULT_VP_DISTANCE * 0.4;
                 break;
 
             case '3': // Toggle left view
-                selectedView = "3"
+                selectedView = "3";
+                VP_DISTANCE = DEFAULT_VP_DISTANCE * 0.8;
                 break;
 
             case '4': // Toggle axonometric view
@@ -137,32 +160,38 @@ function setup(shaders) {
                 break;
 
             case 'r': // Reset
-
+                VP_DISTANCE = DEFAULT_VP_DISTANCE;
+                THETA = 0;
+                GAMMA = 0;
                 break;
 
             case 'w': // Rise UP
-                if (ropeSize > E3 * 2)
+                if (ropeSize > MIN_ROPE_SIZE)
                     ropeSize = ropeSize - L3 * 0.1;
                 break;
 
             case 's': // Lower Tip
-                if (ropeSize < topOfTowerHeight + ROTATOR_HEIGHT - E3) // E3 aqui é o Cart Height
+                if (ropeSize < MAX_ROPE_SIZE) // E3 aqui é o Cart Height
                     ropeSize = ropeSize + L3 * 0.1;
                 break;
 
             case 'i': // Expand Base
                 if (CURRENT_SECOND_SECTION_HEIGHT < MAX_SECOND_SECTION_HEIGHT) {
-                    CURRENT_SECOND_SECTION_HEIGHT += 0.1;
+                    CURRENT_SECOND_SECTION_HEIGHT += 0.01 * MAX_SECOND_SECTION_HEIGHT;
                     topOfTowerHeight = CURRENT_SECOND_SECTION_HEIGHT + L2 * T2 + E2;
-                    //CraneHeight = topOfTowerHeight + ROTATOR_HEIGHT + Math.sqrt(3) * L3 / 2;
+                    MAX_ROPE_SIZE = topOfTowerHeight + ROTATOR_HEIGHT - 1.25*E3;
                 }
                 break;
 
             case 'k': // Contract Base
                 if (CURRENT_SECOND_SECTION_HEIGHT > MIN_SECOND_SECTION_HEIGHT){
-                    CURRENT_SECOND_SECTION_HEIGHT -= 0.1;
+                    CURRENT_SECOND_SECTION_HEIGHT -= 0.01 * MAX_SECOND_SECTION_HEIGHT;
                     topOfTowerHeight = CURRENT_SECOND_SECTION_HEIGHT + L2 * T2 + E2;
-                    //CraneHeight = topOfTowerHeight + ROTATOR_HEIGHT + Math.sqrt(3) * L3 / 2;
+                    
+                    MAX_ROPE_SIZE = topOfTowerHeight + ROTATOR_HEIGHT - 1.25*E3;
+                    if (ropeSize > MAX_ROPE_SIZE){
+                        ropeSize = MAX_ROPE_SIZE
+                    }
                 }
                 
                 break;
@@ -177,7 +206,7 @@ function setup(shaders) {
 
             case 'a': // Slider outwards
                 const preCalcA = cartPosition + FLOOR_BLOCK_SIZE/20
-                if (preCalcA < (T3 + 0.5) * L3) {
+                if (preCalcA < MAX_CART_POSITION) {
                     cartPosition = preCalcA;
                 }
 
@@ -185,14 +214,13 @@ function setup(shaders) {
 
             case 'd': // Slider inwards
                 const preCalcD = cartPosition - FLOOR_BLOCK_SIZE/20;
-                if (preCalcD > FLOOR_BLOCK_SIZE) {
+                if (preCalcD > MIN_CART_POSITION) {
                     cartPosition = preCalcD;
                 }
                 break;
 
             case 'ArrowLeft': // Increase THETA
                 THETA += 1;
-                //console.log(THETA);
                 break;
 
             case 'ArrowRight': // Decrease THETA
@@ -214,10 +242,14 @@ function setup(shaders) {
     }
 
     window.addEventListener("wheel", (evt) => {
-        if (evt.deltaY > 0)
-            VP_DISTANCE *= 1.1;
-        else
-            VP_DISTANCE *= 0.9;
+        if (evt.deltaY > 0) {
+            VP_DISTANCE += DEFAULT_VP_DISTANCE * 0.1;
+        }    
+        else {
+            let preCalcZoom = VP_DISTANCE - DEFAULT_VP_DISTANCE * 0.1;
+            if(preCalcZoom > DEFAULT_VP_DISTANCE * 0.1)
+                VP_DISTANCE = preCalcZoom;
+        }
     })
 
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
@@ -278,7 +310,7 @@ function setup(shaders) {
     /**
      * This is the cart and the rope that moves along the top bar
      */
-    function cart_and_rope() {
+    function cart_and_rope() { 
         pushMatrix();
         /**/cart();
         popMatrix();
@@ -360,10 +392,10 @@ function setup(shaders) {
         /**/top_bar_forward();
         popMatrix();
 
-        pushMatrix();
+        pushMatrix(); 
         /**/multTranslation([0, -E3 * 2, cartPosition]);
         /**/multRotationZ(-30);
-        /**/multTranslation([-(L3) / 2 - E3, 3*E3/4, 0]);
+        /**/multTranslation([-(L3) / 2 - E3, 3*E3/4 , 0]);
         /**/cart_and_rope();
         popMatrix();
 
@@ -534,14 +566,14 @@ function setup(shaders) {
     }
 
     function cubeBeam(isFirstSection) {
-        let l = 0;
-        let e = 0;
-        if (isFirstSection) { l = L1; e = E1; }
-        else { l = L2; e = E2; }
+        let l = L1;
+        let e = E1;
+        let color = COLOR_BEAM;
+        if (!isFirstSection) { l = L2; e = E2; color = COLOR_BEAM_2; }
 
         multTranslation([e / 2, l / 2, e / 2]); // To centre the axis xyz
         multScale([e, l, e]);
-        uploadModelView(COLOR_BEAM);
+        uploadModelView(color);
         CUBE.draw(gl, program, mode);
     }
 
@@ -608,6 +640,7 @@ function setup(shaders) {
         gl.uniformMatrix4fv(gl.getUniformLocation(program, "mProjection"), false, flatten(mProjection()));
         
         activeView = VIEWS()[selectedView];
+        
         loadMatrix(activeView); // Load corresponding perspective matrix
 
         if (selectedView == "4") {
@@ -634,8 +667,8 @@ function setup(shaders) {
         /**//**/rotator();
         /**/popMatrix();
 
-        /**/multTranslation([0, (ROTATOR_HEIGHT) / 2, -(L3 + E3) / 2]);
-        /**/multTranslation([0, E3/2, 0]);
+        /**/multTranslation([0, ROTATOR_HEIGHT / 2, -(L3 + E3) / 2]);
+        /**/multTranslation([0, 3*E3/4, 0]);
         /**/multRotationY(90);
         /**/multRotationZ(30);
         /**/multTranslation([-E3/2, 0, -L3 / 2]);
