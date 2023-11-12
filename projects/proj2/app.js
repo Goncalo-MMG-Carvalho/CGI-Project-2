@@ -314,11 +314,16 @@ function setup(shaders) {
         pushMatrix();
         /**/cart();
         popMatrix();
+        
         multTranslation([0, -E3 / 2, 0])
         rope();
     }
 
+    /**
+     * Draws the Crane's counter weight
+     */
     function counter_weight() {
+        // This piece of code was the previous counterweight, boring old cube
         // multScale([L3 + E3, L3 + E3, L3 + E3])
         // uploadModelView(CLOLOR_COUTNER_WEIGHT)
         // CUBE.draw(gl, program, mode)
@@ -328,7 +333,7 @@ function setup(shaders) {
         popMatrix();
 
         
-        /**/multTranslation([0, -L3, 0]); // position the base of the counter weight
+        multTranslation([0, -L3, 0]); // position the base of the counter weight
 
         pushMatrix(); // the base of the counter weight
         /**/multScale([L3, E3, L3]);
@@ -343,8 +348,6 @@ function setup(shaders) {
         multScale([(L3 + E3) * 5, (L3 + E3) * 5, (L3 + E3) * 5]);
         uploadModelView(COLOR_BUNNY);
         BUNNY.draw(gl, program, mode);
-        
-
     }
 
     /**
@@ -380,20 +383,19 @@ function setup(shaders) {
         multScale([E3, L3, E3]);
         uploadModelView(COLOR_ROPE);
         CYLINDER.draw(gl, program, mode);
-
     }
 
     /**
      * This is the top bar of the crane in the cross axis
      * -> This part is static
      */
-    function top_bar() {
+    function top_bar(cart_position) {
         pushMatrix();
         /**/top_bar_forward();
         popMatrix();
 
         pushMatrix(); 
-        /**/multTranslation([0, -E3 * 2, cartPosition]);
+        /**/multTranslation([0, -E3 * 2, cart_position]);/*cartPosition*/
         /**/multRotationZ(-30);
         /**/multTranslation([-(L3) / 2 - E3, 3*E3/4 , 0]);
         /**/cart_and_rope();
@@ -415,8 +417,14 @@ function setup(shaders) {
      */
     function top_bar_forward() {
         for (let i = 0; i < T3 + 1; i++) {
-            prismBase();
-            sidesOfPrism();
+            pushMatrix();
+            /**/prismBase();
+            popMatrix();
+
+            pushMatrix();
+            /**/sidesOfPrism();
+            popMatrix();
+
             multTranslation([0, 0, L3]);
         }
         prismBase();
@@ -428,8 +436,14 @@ function setup(shaders) {
     function top_bar_backward() {
         for (let i = 0; i < T4; i++) {
             multTranslation([0, 0, -L3]);
-            sidesOfPrism();
-            prismBase();
+
+            pushMatrix();
+            /**/sidesOfPrism();
+            popMatrix();
+
+            pushMatrix();
+            /**/prismBase();
+            popMatrix();
         }
     }
 
@@ -440,11 +454,13 @@ function setup(shaders) {
     function first_section() {
         for (let i = 0; i < T1; i++) { // Create each block of the first section
             pushMatrix();
-            cubeBase(true);
+            /**/cubeBase(true);
             popMatrix();
+            
             pushMatrix();
-            sidesOfCube(true);
+            /**/sidesOfCube(true);
             popMatrix();
+
             multTranslation([0, L1, 0]);
         }
         cubeBase(true);
@@ -458,33 +474,34 @@ function setup(shaders) {
 
         for (let i = 0; i < T2; i++) { // Create each block of the second section
             pushMatrix();
-            cubeBase(false);
+            /**/cubeBase(false);
             popMatrix();
+            
             pushMatrix();
-            sidesOfCube(false);
+            /**/sidesOfCube(false);
             popMatrix();
+            
             multTranslation([0, L2, 0]);
         }
-        cubeBase(false);
+        cubeBase(false);  
     }
 
     /**
      * Draws the tower of the crane
      */
-    function tower() {
+    function tower(second_section_height) {
         pushMatrix();
         /**/first_section();
         popMatrix();
-        pushMatrix();
-        /**/multTranslation([-E1, CURRENT_SECOND_SECTION_HEIGHT, -E1]);
-        /**/second_section();
-        popMatrix();
+        
+        multTranslation([-E1, second_section_height, -E1]); /* CURRENT_SECOND_SECTION_HEIGHT */
+        second_section();
     }
 
     /**
      * Create the floor with 2 tones, grey and white
      */
-    function floor() { //DONE
+    function floor() {
         multTranslation([0, -FLOOR_BLOCK_SIZE / 200, 0])
         multScale([FLOOR_BLOCK_SIZE, -FLOOR_BLOCK_SIZE / 100, FLOOR_BLOCK_SIZE]); // Scale of the blocks that make the floor
 
@@ -496,6 +513,7 @@ function setup(shaders) {
             pushMatrix();
             for (let j = 0; j < FLOOR_SIZE; j++) {
                 let color = ((i + j) % 2) == 0 ? COLOR_FLOOR_1 : COLOR_FLOOR_2;
+                
                 uploadModelView(color);
                 CUBE.draw(gl, program, mode);
                 multTranslation([1, 0, 0]);
@@ -510,7 +528,7 @@ function setup(shaders) {
      * Draws the beam from witch the prisms are made of
      */
     function prismBeam() {
-        multTranslation([0/*E3/2*/, L3 / 2, 0/*E3/2*/]); // To centre the axis xyz
+        multTranslation([0, L3 / 2, 0]); // To centre the axis xyz
         multScale([E3, L3, E3]);
         uploadModelView(COLOR_BEAM);
         CUBE.draw(gl, program, mode);
@@ -530,11 +548,9 @@ function setup(shaders) {
         /**/prismBeam();
         popMatrix();
 
-        pushMatrix();
-        /**/multTranslation([0, L3, 0]);
-        /**/multRotationZ(120);
-        /**/prismBeam();
-        popMatrix();
+        multTranslation([0, L3, 0]);
+        multRotationZ(120);
+        prismBeam();
     }
 
     /**
@@ -544,25 +560,21 @@ function setup(shaders) {
         
         pushMatrix();
         /**/multRotationX(90);
-        multRotationY(-30)
+        /**/multRotationY(-30);
         /**/prismBeam();
         popMatrix();
 
         pushMatrix();
         /**/multTranslation([0, L3, 0]);
         /**/multRotationX(90);
-        /**/multRotationY(-30)
+        /**/multRotationY(-30);
         /**/prismBeam();
         popMatrix();
 
-        pushMatrix();
-        /**/multRotationZ(60);
-        /**/multTranslation([0, L3, 0]);
-        /**/multRotationX(90);
-        // /**/multRotationY(30);
-        // /**/multRotationY(-30)
-        /**/prismBeam();
-        popMatrix();
+        multRotationZ(60);
+        multTranslation([0, L3, 0]);
+        multRotationX(90);
+        prismBeam();
     }
 
     function cubeBeam(isFirstSection) {
@@ -587,22 +599,24 @@ function setup(shaders) {
         else { l = L2; e = E2; }
 
         multRotationX(-90);
+
         pushMatrix();
-        cubeBeam(isFirstSection);
+        /**/cubeBeam(isFirstSection);
         popMatrix();
+
         pushMatrix();
-        multRotationZ(90);
-        cubeBeam(isFirstSection);
+        /**/multRotationZ(90);
+        /**/cubeBeam(isFirstSection);
         popMatrix();
+
         pushMatrix();
-        multTranslation([e, l, 0]);
-        multRotationZ(90);
-        cubeBeam(isFirstSection);
+        /**/multTranslation([e, l, 0]);
+        /**/multRotationZ(90);
+        /**/cubeBeam(isFirstSection);
         popMatrix();
-        pushMatrix();
+        
         multTranslation([-l, e, 0]);
         cubeBeam(isFirstSection);
-        popMatrix();
     }
 
     /**
@@ -615,17 +629,21 @@ function setup(shaders) {
         else { l = L2; e = E2; }
 
         multTranslation([0, e, -e]);
+
         pushMatrix();
-        cubeBeam(isFirstSection);
+        /**/cubeBeam(isFirstSection);
         popMatrix();
+
         pushMatrix();
-        multTranslation([-l, 0, 0]);
-        cubeBeam(isFirstSection);
+        /**/multTranslation([-l, 0, 0]);
+        /**/cubeBeam(isFirstSection);
         popMatrix();
+
         pushMatrix();
-        multTranslation([0, 0, -l]);
-        cubeBeam(isFirstSection);
+        /**/multTranslation([0, 0, -l]);
+        /**/cubeBeam(isFirstSection);
         popMatrix();
+
         multTranslation([-l, 0, -l]);
         cubeBeam(isFirstSection);
     }
@@ -655,25 +673,23 @@ function setup(shaders) {
 
         pushMatrix();
         /**/multTranslation([-(L1 + E1) / 2, 0, -(L1 - E1) / 2]);
-        /**/tower();
+        /**/tower(CURRENT_SECOND_SECTION_HEIGHT);
         popMatrix();
+
+        multTranslation([0, topOfTowerHeight + ROTATOR_HEIGHT / 2, 0]);
+        multTranslation([-FLOOR_BLOCK_SIZE / 2, 0, -FLOOR_BLOCK_SIZE / 2]);
+        multRotationY(CRANE_ROTATION_ANGLE);
 
         pushMatrix();
-        /**/multTranslation([0, topOfTowerHeight + ROTATOR_HEIGHT / 2, 0]);
-        /**/multTranslation([-FLOOR_BLOCK_SIZE / 2, 0, -FLOOR_BLOCK_SIZE / 2]);
-        /**/multRotationY(CRANE_ROTATION_ANGLE);
-
-        /**/pushMatrix();
-        /**//**/rotator();
-        /**/popMatrix();
-
-        /**/multTranslation([0, ROTATOR_HEIGHT / 2, -(L3 + E3) / 2]);
-        /**/multTranslation([0, 3*E3/4, 0]);
-        /**/multRotationY(90);
-        /**/multRotationZ(30);
-        /**/multTranslation([-E3/2, 0, -L3 / 2]);
-        /**/top_bar();
+        /**/rotator();
         popMatrix();
+
+        multTranslation([0, ROTATOR_HEIGHT / 2, -(L3 + E3) / 2]);
+        multTranslation([0, 3*E3/4, 0]);
+        multRotationY(90);
+        multRotationZ(30);
+        multTranslation([-E3/2, 0, -L3 / 2]);
+        top_bar(cartPosition);
     }
 }
 
