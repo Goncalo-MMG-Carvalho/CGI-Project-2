@@ -93,20 +93,12 @@ let VIEWS = () => ({
     "4": lookAt([VP_DISTANCE/4 , VP_DISTANCE / 3 + GAMMA + MAX_CRANE_HEIGHT/2 , VP_DISTANCE], [0, MAX_CRANE_HEIGHT/2, 0], [0, 1, 0]), //Axonometric
 });
 
-// let TEST_VIEWS = () => ({
-//     "1": lookAt([0, 0, VP_DISTANCE / 4], [0, 0, 0], [0, 1, 0]), //Front view
-
-//     "2": lookAt([0, 0 + VP_DISTANCE / 4, 0], [0, 0, 0], [0, 0, -1]), //From Above
-
-//     "3": lookAt([-VP_DISTANCE / 4, 0, 0], [0, 0, 0], [0, 1, 0]), //From left
-
-//     "4": lookAt([VP_DISTANCE/4 , VP_DISTANCE / 3 + GAMMA + MAX_CRANE_HEIGHT/2 , VP_DISTANCE], [0, MAX_CRANE_HEIGHT/2, 0], [0, 1, 0]), //Axonometric
-// });
 
 
 
 let selectedView = "4";
-let activeView = VIEWS[selectedView];
+let activeView;
+//let activeView = VIEWS[selectedView];
 
 
 
@@ -137,7 +129,8 @@ function setup(shaders) {
             case '0': // Toggle wireframe / solid mode
                 if (mode == gl.LINES)
                     mode = gl.TRIANGLES;
-                else mode = gl.LINES;
+                else 
+                    mode = gl.LINES;
                 break;
 
             case '1': // Toggle front view
@@ -166,13 +159,18 @@ function setup(shaders) {
                 break;
 
             case 'w': // Rise UP
-                if (ropeSize > MIN_ROPE_SIZE)
+                if (ropeSize > MIN_ROPE_SIZE) // Not so precise as max because the min size is > 0
                     ropeSize = ropeSize - L3 * 0.1;
                 break;
 
             case 's': // Lower Tip
-                if (ropeSize < MAX_ROPE_SIZE) // E3 aqui é o Cart Height
-                    ropeSize = ropeSize + L3 * 0.1;
+                let preCalcRope = ropeSize + L3 * 0.1;
+
+                if (preCalcRope < MAX_ROPE_SIZE) // E3 aqui é o Cart Height
+                    ropeSize = preCalcRope;
+                else 
+                    ropeSize = MAX_ROPE_SIZE;
+
                 break;
 
             case 'i': // Expand Base
@@ -299,24 +297,24 @@ function setup(shaders) {
     /**
      * This is the rope that goes up and down from the cart
      */
-    function rope() {
-        multTranslation([0, -ropeSize / 2, 0])
-        multScale([E3, ropeSize, E3])
+    function rope(rope_size) {
+        multTranslation([0, -rope_size / 2, 0]); //ropeSize 
+        multScale([E3, rope_size, E3]); // ropeSize
 
-        uploadModelView(COLOR_ROPE)
-        CYLINDER.draw(gl, program, mode)
+        uploadModelView(COLOR_ROPE);
+        CYLINDER.draw(gl, program, mode);
     }
 
     /**
      * This is the cart and the rope that moves along the top bar
      */
-    function cart_and_rope() { 
+    function cart_and_rope(rope_size) { 
         pushMatrix();
         /**/cart();
         popMatrix();
-        
+
         multTranslation([0, -E3 / 2, 0])
-        rope();
+        rope(rope_size);
     }
 
     /**
@@ -389,7 +387,7 @@ function setup(shaders) {
      * This is the top bar of the crane in the cross axis
      * -> This part is static
      */
-    function top_bar(cart_position) {
+    function top_bar(cart_position, rope_size) {
         pushMatrix();
         /**/top_bar_forward();
         popMatrix();
@@ -398,7 +396,7 @@ function setup(shaders) {
         /**/multTranslation([0, -E3 * 2, cart_position]);/*cartPosition*/
         /**/multRotationZ(-30);
         /**/multTranslation([-(L3) / 2 - E3, 3*E3/4 , 0]);
-        /**/cart_and_rope();
+        /**/cart_and_rope(rope_size);
         popMatrix();
 
         pushMatrix();
@@ -657,7 +655,7 @@ function setup(shaders) {
         gl.useProgram(program);
         gl.uniformMatrix4fv(gl.getUniformLocation(program, "mProjection"), false, flatten(mProjection()));
         
-        activeView = VIEWS()[selectedView];
+        activeView = VIEWS()[selectedView]; 
         
         loadMatrix(activeView); // Load corresponding perspective matrix
 
@@ -689,7 +687,7 @@ function setup(shaders) {
         multRotationY(90);
         multRotationZ(30);
         multTranslation([-E3/2, 0, -L3 / 2]);
-        top_bar(cartPosition);
+        top_bar(cartPosition, ropeSize);
     }
 }
 
