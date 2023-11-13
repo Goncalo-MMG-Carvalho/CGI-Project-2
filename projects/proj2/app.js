@@ -38,48 +38,48 @@ const COLOR_COUNTER_WEIGHT = [0, 0, 1, 1] //BLUE
 const COLOR_BUNNY = [0.5, 1, 1, 1] //Weird blue
 
 // Crane Parameters
-const T1 = 11; // Number of cubes in the first section of the tower
-const T2 = T1 + 5; // Number of cubes in the second section of the tower
+const T1 = 11;                          // Number of cubes in the first section of the tower
+const T2 = T1 + 5;                      // Number of cubes in the second section of the tower
 
-const T3 = T1; // Number of prisms in the biggest section of the top bar
-const T4 = T3 / 3; // Number of prisms in the smallest section of the top bar
+const T3 = T1;                          // Number of prisms in the biggest section of the top bar
+const T4 = T3 / 3;                      // Number of prisms in the smallest section of the top bar
 
-const E1 = DEFAULT_VP_DISTANCE / 35; // Thickness of the edges of the tower
-const E2 = E1; // Thickness of the edges of the second section of the tower
-const E3 = E2; // Thickness of the edges of the top bar
+const E1 = DEFAULT_VP_DISTANCE / 35;    // Thickness of the edges of the tower
+const E2 = E1;                          // Thickness of the edges of the second section of the tower
+const E3 = E2;                          // Thickness of the edges of the top bar
 
-const L1 = 10 * E1;  // Length of the beam of the first section of the tower
-const L2 = L1 - 2 * E1; // Length of the beam of the second section of the tower
-const L3 = L2; // Length of the beam of the top bar
+const L1 = 10 * E1;                     // Length of the beam of the first section of the tower
+const L2 = L1 - 2 * E1;                 // Length of the beam of the second section of the tower
+const L3 = L2;                          // Length of the beam of the top bar
 
 // Floor
-const FLOOR_BLOCK_SIZE = 2 * L1; // Length of the floor
-const FLOOR_SIZE = FLOOR_BLOCK_SIZE * 10 + 1; // Size of the floor, +1 to be impar
+const FLOOR_BLOCK_SIZE = 2 * L1;                // Length of the floor
+const FLOOR_SIZE = FLOOR_BLOCK_SIZE * 10 + 1;   // Size of the floor, +1 to be impar
 
 // Crane Dimensions
-const LOWER_SECTION_HEIGHT = L1 * T1; // Height of the lower section of the crane
+const LOWER_SECTION_HEIGHT = L1 * T1;                               // Height of the lower section of the crane
 
-const MAX_SECOND_SECTION_HEIGHT = LOWER_SECTION_HEIGHT * 0.9; // Height of the base of second section of the crane to the floor
+const MAX_SECOND_SECTION_HEIGHT = LOWER_SECTION_HEIGHT * 0.9;       // Height of the base of second section of the crane to the floor
 const MIN_SECOND_SECTION_HEIGHT = MAX_SECOND_SECTION_HEIGHT * 0.05; // Minimum height of the base second section of the crane
 
-let CURRENT_SECOND_SECTION_HEIGHT = MAX_SECOND_SECTION_HEIGHT / 2; // Current height of the second section of the crane to the floor
-let CRANE_ROTATION_ANGLE = 180; // Current rotation angle of the crane
+let CURRENT_SECOND_SECTION_HEIGHT = MAX_SECOND_SECTION_HEIGHT / 2;  // Current height of the second section of the crane to the floor
+let CRANE_ROTATION_ANGLE = 180;                                     // Current rotation angle of the crane
 
-const ROTATOR_HEIGHT = L2 / 2; // Height of the cylinder that couples the top bar to the crane
+const ROTATOR_HEIGHT = L2 / 2;                                      // Height of the cylinder that couples the top bar to the crane
 const ROTATOR_RADIUS = FLOOR_BLOCK_SIZE / 2;
 
-let topOfTowerHeight = CURRENT_SECOND_SECTION_HEIGHT + L2 * T2 + E2; // Height of the crane
-const MAX_TOP_OF_TOWER_HEIGHT = MAX_SECOND_SECTION_HEIGHT + L2 * T2 + E2; // Height of the crane
-const MAX_CRANE_HEIGHT = MAX_TOP_OF_TOWER_HEIGHT + ROTATOR_HEIGHT + Math.sqrt(3) * L3 / 2; // Height of the crane
+let topOfTowerHeight = CURRENT_SECOND_SECTION_HEIGHT + L2 * T2 + E2;                        // Height of the top of the tower
+const MAX_TOP_OF_TOWER_HEIGHT = MAX_SECOND_SECTION_HEIGHT + L2 * T2 + E2;                   // Max Height of the top of the tower
+const MAX_CRANE_HEIGHT = MAX_TOP_OF_TOWER_HEIGHT + ROTATOR_HEIGHT + Math.sqrt(3) * L3 / 2;  // Max Height of the top of the crane
 
-let MAX_ROPE_SIZE = topOfTowerHeight + ROTATOR_HEIGHT - 1.25*E3; // Maximum size of the rope that goes up and down from the cart
-const MIN_ROPE_SIZE = E3 * 2; // Minimum size of the rope that goes up and down from the cart
+let MAX_ROPE_SIZE = topOfTowerHeight + ROTATOR_HEIGHT - 1.25*E3;    // Maximum size of the rope that goes up and down from the cart
+const MIN_ROPE_SIZE = E3 * 2;                                       // Minimum size of the rope that goes up and down from the cart
 
-const MAX_CART_POSITION = (T3 + 0.5) * L3
-const MIN_CART_POSITION = FLOOR_BLOCK_SIZE
+const MAX_CART_POSITION = (T3 + 0.5) * L3 - E3;  // Furthest position of the cart along the top bar 
+const MIN_CART_POSITION = FLOOR_BLOCK_SIZE; //  Closest position of the cart along the top bar
 
-let ropeSize = L3; // Size of the rope that goes up and down from the cart
-let cartPosition = MAX_CART_POSITION; // Position of the cart along the top bar
+let ropeSize = L3;                      // Current size of the rope that goes up and down from the cart
+let cartPosition = MAX_CART_POSITION;   // Current position of the cart along the top bar
 
 
 
@@ -93,12 +93,8 @@ let VIEWS = () => ({
     "4": lookAt([VP_DISTANCE/4 , VP_DISTANCE / 3 + GAMMA + MAX_CRANE_HEIGHT/2 , VP_DISTANCE], [0, MAX_CRANE_HEIGHT/2, 0], [0, 1, 0]), //Axonometric
 });
 
-
-
-
 let selectedView = "4";
 let activeView;
-//let activeView = VIEWS[selectedView];
 
 
 
@@ -110,6 +106,7 @@ function setup(shaders) {
 
     let program = buildProgramFromSources(gl, shaders["shader.vert"], shaders["shader.frag"]);
     const incIndex = 5;
+
     let mProjection = () => ortho(
         -VP_DISTANCE * aspect * incIndex,
         VP_DISTANCE * aspect * incIndex,
@@ -203,15 +200,15 @@ function setup(shaders) {
                 break;
 
             case 'a': // Slider outwards
-                const preCalcA = cartPosition + FLOOR_BLOCK_SIZE/20
-                if (preCalcA < MAX_CART_POSITION) {
+                const preCalcA = cartPosition + E3
+                if (preCalcA <= MAX_CART_POSITION) {
                     cartPosition = preCalcA;
                 }
 
                 break;
 
             case 'd': // Slider inwards
-                const preCalcD = cartPosition - FLOOR_BLOCK_SIZE/20;
+                const preCalcD = cartPosition - E3;
                 if (preCalcD > MIN_CART_POSITION) {
                     cartPosition = preCalcD;
                 }
@@ -313,7 +310,7 @@ function setup(shaders) {
         /**/cart();
         popMatrix();
 
-        multTranslation([0, -E3 / 2, 0])
+        multTranslation([0, -E3 / 2, 0]);
         rope(rope_size);
     }
 
@@ -339,10 +336,10 @@ function setup(shaders) {
         /**/CUBE.draw(gl, program, mode);
         popMatrix();
 
-        multTranslation([0, E3/2, 0]) //conspensete half the height of the base of the counter weight
+        multTranslation([0, E3/2, 0]); //conspensete half the height of the base of the counter weight
 
         multRotationY(90);
-        // The counter weight is a bunny
+        // The counter weight
         multScale([(L3 + E3) * 5, (L3 + E3) * 5, (L3 + E3) * 5]);
         uploadModelView(COLOR_BUNNY);
         BUNNY.draw(gl, program, mode);
@@ -352,7 +349,7 @@ function setup(shaders) {
      * 4 counter weight ropes
      */
     function counter_weight_ropes() {
-        multTranslation([0, -(L3- E3)/2, 0]) // para centrar os eixos xyz no centro da posição das cordas
+        multTranslation([0, -(L3- E3)/2, 0]); // para centrar os eixos xyz no centro da posição das cordas
         
         pushMatrix();
         /**/multTranslation([-(L3 - E3)/2 , 0, -(L3 - E3)/2 ]);
@@ -392,6 +389,10 @@ function setup(shaders) {
         /**/top_bar_forward();
         popMatrix();
 
+        pushMatrix();
+        /**/top_bar_backward();
+        popMatrix();
+
         pushMatrix(); 
         /**/multTranslation([0, -E3 * 2, cart_position]);/*cartPosition*/
         /**/multRotationZ(-30);
@@ -399,14 +400,8 @@ function setup(shaders) {
         /**/cart_and_rope(rope_size);
         popMatrix();
 
-        pushMatrix();
-        /**/top_bar_backward();
-        popMatrix();
-
         multRotationZ(-30);
-        multTranslation([0,  -E3, 0]);
-        multTranslation([-(L3) / 2, 0, (L3) / 2]);
-        multTranslation([0, 0, -(L3+E3)*(T4-1)]);
+        multTranslation([-(L3) / 2, -E3, (-(L3+E3)*(T4-1)) + ((L3) / 2)]);
         counter_weight();
     }
 
@@ -426,6 +421,27 @@ function setup(shaders) {
             multTranslation([0, 0, L3]);
         }
         prismBase();
+        
+        /*
+         * READ ME:
+         *      Este cliclo for em comentário é equivalente ao anterior e é o representado no grafo de cena, mas é menos eficiente 
+         * pq faz mais push e pop de matrizes e mais 1 multTranslation no final
+         */
+        // for (let i = 0; i < T3 + 1; i++) {
+        //     pushMatrix();
+        //         multTranslation([0, 0, L3*i]);
+        //         pushMatrix();
+        //         /**/prismBase();
+        //         popMatrix();
+
+        //         pushMatrix();
+        //         /**/sidesOfPrism();
+        //         popMatrix();
+        //     popMatrix();
+            
+        // }
+        // multTranslation([0, 0, L3 * (T3 + 1)]);
+        // prismBase();
     }
 
     /**
@@ -443,6 +459,25 @@ function setup(shaders) {
             /**/prismBase();
             popMatrix();
         }
+
+        /*
+         * READ ME:
+         *      Este cliclo for em comentário é equivalente ao anterior e é o representado no grafo de cena, mas é menos eficiente 
+         * pq faz mais push e pop de matrizes
+         */
+        // for (let i = 0; i < T4; i++) {
+        //     pushMatrix();
+        //         multTranslation([0, 0, -L3*(i+1)]);
+
+        //         pushMatrix();
+        //         /**/sidesOfPrism();
+        //         popMatrix();
+
+        //         pushMatrix();
+        //         /**/prismBase();
+        //         popMatrix();
+        //     popMatrix();
+        // }
     }
 
     /**
@@ -462,6 +497,27 @@ function setup(shaders) {
             multTranslation([0, L1, 0]);
         }
         cubeBase(true);
+
+        /*
+         * READ ME:
+         *      Este cliclo for em comentário é equivalente ao anterior e é o representado no grafo de cena, mas é menos eficiente 
+         * pq faz mais push e pop de matrizes e tem de fazer mais um multTranslation no final
+         */ 
+        // for (let i = 0; i < T1; i++) { // Create each block of the first section
+        //     pushMatrix();
+        //         multTranslation([0, L1 * i, 0]);
+                
+        //         pushMatrix();
+        //             cubeBase(true);
+        //         popMatrix();
+                
+        //         pushMatrix();
+        //             sidesOfCube(true);
+        //         popMatrix();
+        //     popMatrix();
+        // }
+        // multTranslation([0, L1 * T1, 0]);
+        // cubeBase(true);
     }
 
     /**
@@ -481,7 +537,28 @@ function setup(shaders) {
             
             multTranslation([0, L2, 0]);
         }
-        cubeBase(false);  
+        cubeBase(false);
+
+        /*
+         * READ ME:
+         *      Este cliclo for em comentário é equivalente ao anterior e é o representado no grafo de cena, mas é menos eficiente 
+         * pq faz mais push e pop de matrizes
+         */
+        // for (let i = 0; i < T2; i++) { // Create each block of the first section
+        //     pushMatrix();
+        //         multTranslation([0, L2 * i, 0]);
+                
+        //         pushMatrix();
+        //             cubeBase(false);
+        //         popMatrix();
+                
+        //         pushMatrix();
+        //             sidesOfCube(false);
+        //         popMatrix();
+        //     popMatrix();
+        // }
+        // multTranslation([0, L2 * T2, 0]);
+        // cubeBase(false);
     }
 
     /**
@@ -506,12 +583,10 @@ function setup(shaders) {
         // so the floor is centered on the middle of the screen
         multTranslation([-FLOOR_SIZE / 2, 0, -FLOOR_SIZE / 2]);
 
-
         for (let i = 0; i < FLOOR_SIZE; i++) { // Create each block of the floor
             pushMatrix();
             for (let j = 0; j < FLOOR_SIZE; j++) {
-                let color = ((i + j) % 2) == 0 ? COLOR_FLOOR_1 : COLOR_FLOOR_2;
-                
+                let color = ((i + j) % 2) == 0 ? COLOR_FLOOR_1 : COLOR_FLOOR_2; 
                 uploadModelView(color);
                 CUBE.draw(gl, program, mode);
                 multTranslation([1, 0, 0]);
@@ -519,6 +594,29 @@ function setup(shaders) {
             popMatrix();
             multTranslation([0, 0, 1]);
         }
+
+        /**
+         *      READ ME:
+         *      Este cliclo for em comentário faz o mesmo que o anterior e é o representado no grafo de cena, mas é menos eficiente 
+         * pq faz mais push e pop de matrizes
+         
+        for (let i = 0; i < FLOOR_SIZE; i++) { // Create each block of the floor
+            pushMatrix();
+                multTranslation([0, 0, i]);
+                
+                for (let j = 0; j < FLOOR_SIZE; j++) {
+                    pushMatrix();
+                        multTranslation([j, 0, 0]);
+                        let color = ((i + j) % 2) == 0 ? COLOR_FLOOR_1 : COLOR_FLOOR_2;
+                        
+                        uploadModelView(color);
+                        CUBE.draw(gl, program, mode);
+                    popMatrix();
+                }
+            popMatrix();
+            
+        }
+        */
     }
 
     /** 
@@ -646,6 +744,33 @@ function setup(shaders) {
         cubeBeam(isFirstSection);
     }
 
+    /*
+    * Draws the whole crane
+    */
+    function crane(top_of_tower_height, cart_position, rope_size, current_2nd_section_height, crane_rotation_angle) {
+        pushMatrix();
+        /**/multTranslation([-(L1 + E1) / 2, 0, -(L1 - E1) / 2]);
+        /**/tower(current_2nd_section_height);
+        popMatrix();
+
+        // Translação por partes para explicar
+        // multTranslation([0, top_of_tower_height + ROTATOR_HEIGHT / 2, 0]);   // Para por na altura actual da torre
+        // multTranslation([-FLOOR_BLOCK_SIZE / 2, 0, -FLOOR_BLOCK_SIZE / 2]);  // Centar Eixo no centro da grua
+
+        multTranslation([-FLOOR_BLOCK_SIZE / 2, top_of_tower_height + ROTATOR_HEIGHT / 2, -FLOOR_BLOCK_SIZE / 2]);
+        multRotationY(crane_rotation_angle);
+
+        pushMatrix();
+        /**/rotator();
+        popMatrix();
+
+        multTranslation([0, ROTATOR_HEIGHT / 2 + 3 * E3 /4, -(L3 + E3) / 2]);
+        multRotationY(90);
+        multRotationZ(30);
+        multTranslation([-E3/2, 0, -L3 / 2]);
+        top_bar(cart_position, rope_size);
+    }
+
     function render() {
         if (animation) time += speed;
         
@@ -669,25 +794,7 @@ function setup(shaders) {
         /**/floor();
         popMatrix();
 
-        pushMatrix();
-        /**/multTranslation([-(L1 + E1) / 2, 0, -(L1 - E1) / 2]);
-        /**/tower(CURRENT_SECOND_SECTION_HEIGHT);
-        popMatrix();
-
-        multTranslation([0, topOfTowerHeight + ROTATOR_HEIGHT / 2, 0]);
-        multTranslation([-FLOOR_BLOCK_SIZE / 2, 0, -FLOOR_BLOCK_SIZE / 2]);
-        multRotationY(CRANE_ROTATION_ANGLE);
-
-        pushMatrix();
-        /**/rotator();
-        popMatrix();
-
-        multTranslation([0, ROTATOR_HEIGHT / 2, -(L3 + E3) / 2]);
-        multTranslation([0, 3*E3/4, 0]);
-        multRotationY(90);
-        multRotationZ(30);
-        multTranslation([-E3/2, 0, -L3 / 2]);
-        top_bar(cartPosition, ropeSize);
+        crane(topOfTowerHeight, cartPosition, ropeSize, CURRENT_SECOND_SECTION_HEIGHT, CRANE_ROTATION_ANGLE);
     }
 }
 
